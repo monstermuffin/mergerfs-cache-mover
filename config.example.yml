@@ -1,0 +1,14 @@
+---
+# Configuration for the mover script
+Paths:
+  CACHE_PATH: /path/to/cachedisk #Path to cache disk !!not the cached pool!!
+  BACKING_PATH: /path/to/backendpool #Path to backing storage pool w/o cache
+  LOG_PATH: /path/to/logfile.log
+
+Settings:
+  THRESHOLD_PERCENTAGE: 90 #Percentage at which the mover will start
+  MAX_WORKERS: 4
+
+Webhook:
+  USE_WEBHOOK: true
+  WEBHOOK_URL: https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
