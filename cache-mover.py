@@ -15,7 +15,7 @@ LOG_PATH = config['Paths']['LOG_PATH']
 THRESHOLD_PERCENTAGE = config['Settings']['THRESHOLD_PERCENTAGE']
 USE_WEBHOOK = config['Webhook']['USE_WEBHOOK']
 WEBHOOK_URL = config['Webhook']['WEBHOOK_URL']
-
+MAX_WORKERS = config['Settings']['MAX_WORKERS']
 
 # Load configurations from settings.ini
 config = configparser.ConfigParser()
