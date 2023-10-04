@@ -1,3 +1,4 @@
+from config import CACHE_PATH, BACKING_PATH, PERCENTAGE_THRESHOLD, USE_WEBHOOK, WEBHOOK_URL, MAX_WORKERS
 import os
 import logging
 import shutil
@@ -9,6 +10,7 @@ CACHE_PATH = "/path/to/cache"
 BACKING_PATH = "/path/to/cold"
 PERCENTAGE_THRESHOLD = 80
 WEBHOOK_URL = "some webook ting"
+MAX_WORKERS = 5  # Number of concurrent file moves. Adjust based on your system.
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -37,13 +39,11 @@ def find_oldest_file(path):
 
     return oldest_file
 
-def move_file(src, dest):
-    """Move a file from src to dest."""
-    shutil.move(src, dest)
-    logging.info(f"Moved {src} to {dest}")
-
 def send_webhook_notification(message):
     """Send a notification using a webhook."""
+    if not USE_WEBHOOK:
+        return
+
     payload = {"text": message}
     try:
         response = requests.post(WEBHOOK_URL, json=payload)
@@ -51,26 +51,26 @@ def send_webhook_notification(message):
     except requests.RequestException as e:
         logging.error(f"Failed to send webhook notification: {e}")
 
+
+def move_files_concurrently(files_to_move):
+    """Move multiple files concurrently."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(move_file, src, os.path.join(BACKING_PATH, os.path.basename(src))) for src in files_to_move]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logging.error(f"Error moving file: {e}")
+                send_webhook_notification(f"Error moving file: {e}")
+
 def main():
     # Check if the cache filesystem usage exceeds the threshold
     usage = get_filesystem_usage(CACHE_PATH)
     if usage > PERCENTAGE_THRESHOLD:
         logging.info(f"Cache usage is {usage:.2f}%, exceeding threshold. Starting file move...")
-        # Find the oldest file
-        file_to_move = find_oldest_file(CACHE_PATH)
-        if file_to_move:
-            # Check if there's enough space in the backing filesystem
-            file_size = os.path.getsize(file_to_move)
-            backing_free_space = os.statvfs(BACKING_PATH).f_bfree * os.statvfs(BACKING_PATH).f_frsize
-            if file_size <= backing_free_space:
-                # Move the file to the backing filesystem
-                move_file(file_to_move, os.path.join(BACKING_PATH, os.path.basename(file_to_move)))
-            else:
-                message = "Not enough space in the backing filesystem to move the file."
-                logging.warning(message)
-                send_webhook_notification(message)
-        else:
-            logging.warning("No files found to move.")
+        # Gather a list of files to move
+        files_to_move = [find_oldest_file(CACHE_PATH) for _ in range(MAX_WORKERS)]
+        move_files_concurrently(files_to_move)
     else:
         logging.info(f"Cache usage is {usage:.2f}%, within acceptable limits.")
 
