@@ -3,7 +3,7 @@ import shutil
 import logging
 import yaml
 from concurrent.futures import ThreadPoolExecutor
-from discord_webhook import DiscordWebhook
+# from discord_webhook import DiscordWebhook
 
 # Load configurations from config.yml
 with open('config.yml', 'r') as config_file:
@@ -42,9 +42,9 @@ def move_file(src, dest):
     try:
         shutil.move(src, dest)
         logging.info(f"Moved {src} to {dest}")
-        if USE_WEBHOOK:
-            webhook = DiscordWebhook(url=WEBHOOK_URL, content=f"Moved {src} to {dest}")
-            webhook.execute()
+        # if USE_WEBHOOK:
+        #     webhook = DiscordWebhook(url=WEBHOOK_URL, content=f"Moved {src} to {dest}")
+        #     webhook.execute()
     except Exception as e:
         logging.error(f"Error moving file: {e}")
 
