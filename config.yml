@@ -7,3 +7,5 @@ Paths:
 Settings:
   THRESHOLD_PERCENTAGE: 90 #Percentage at which the mover will start
   MAX_WORKERS: 4
+  MAX_LOG_SIZE_MB: 100  # 100MB
+  BACKUP_COUNT: 5  # keep up to 5 backup log files
