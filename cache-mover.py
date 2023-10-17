@@ -2,6 +2,7 @@ import os
 import shutil
 import logging
 import yaml
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
 
@@ -27,6 +28,19 @@ log_handler.setFormatter(log_formatter)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(log_handler)
+
+def is_script_running():
+    try:
+        # Use ps and grep to count instances of the script running
+        cmd = f"ps aux | grep {os.path.basename(__file__)} | grep -v grep | wc -l"
+        count = int(subprocess.check_output(cmd, shell=True).strip())
+
+        # If count > 1, then another instance of the script is running
+        # (The current instance is also counted.)
+        return count > 1
+    except Exception as e:
+        logging.error(f"Error checking for running script instances: {e}")
+        return False
 
 def get_fs_usage(path):
     """Get filesystem usage percentage."""
@@ -63,9 +77,13 @@ def move_files_concurrently(files_to_move):
                 logger.error(f"Error moving file: {e}")
 
 def main():
+    if is_script_running():
+        logging.warning("Another instance of the script is running. Exiting.")
+        return
+
     current_usage = get_fs_usage(CACHE_PATH)
     if current_usage > THRESHOLD_PERCENTAGE:
-        logger.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
+        logging.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
         files_to_move = gather_files_to_move()
         move_files_concurrently(files_to_move)
 
