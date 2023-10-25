@@ -29,6 +29,30 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(log_handler)
 
+# Add a StreamHandler to log to the console
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(log_formatter)
+logger.addHandler(console_handler)
+
+def is_script_running():
+    current_pid = os.getpid()  # Getting the PID of the current script
+    try:
+        cmd = f"pgrep -fl {os.path.basename(__file__)}"
+        output = subprocess.check_output(cmd, shell=True).decode('utf-8').strip().split('\n')
+        relevant_processes = [line for line in output if str(current_pid) not in line and os.path.basename(__file__) in line]
+        pids = [line.split()[0] for line in relevant_processes]
+        commands = [" ".join(line.split()[1:]) for line in relevant_processes]
+
+        if pids:
+            return True, commands
+        else:
+            return False, []
+    except subprocess.CalledProcessError:
+        return False, []
+    except Exception as e:
+        logging.error(f"Error checking for running script instances: {e}")
+        return False, []
+
 def get_fs_usage(path):
     total, used, free = shutil.disk_usage(path)
     return (used / total) * 100
@@ -53,7 +77,7 @@ def gather_files_to_move():
     return files_to_move
 
 def move_file(src, dest):
-    # Move a file using rsync and log the action.
+    """Move a file using rsync and log the action."""
     try:
         cmd = ["rsync", "-avh", "--remove-source-files", src, dest]
         subprocess.check_call(cmd)
@@ -88,6 +112,13 @@ def delete_empty_dirs(path):
         os.rmdir(path)
 
 def main():
+    running, processes = is_script_running()
+    if running:
+        for process in processes:
+            logging.warning(f"Detected process: {process}")
+        logging.warning("Another instance of the script is running. Exiting.")
+        return
+
     current_usage = get_fs_usage(CACHE_PATH)
     if current_usage > THRESHOLD_PERCENTAGE:
         logging.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
