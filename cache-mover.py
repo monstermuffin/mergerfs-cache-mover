@@ -76,16 +76,28 @@ def gather_files_to_move():
         files_to_move.append(oldest_file)
     return files_to_move
 
-def move_file(src, dest):
+def move_file(src, dest_base):
     """Move a file using rsync and log the action."""
     try:
-        cmd = ["rsync", "-avh", "--remove-source-files", src, dest]
-        subprocess.check_call(cmd)
-        logger.info(f"Moved {src} to {dest}")
-    except subprocess.CalledProcessError:
-        logger.error(f"Error moving file using rsync.")
+        # Get the relative path of the source file with respect to CACHE_PATH
+        relative_path = os.path.relpath(src, CACHE_PATH)
+
+        # Construct the full destination directory
+        dest_dir = os.path.join(dest_base, os.path.dirname(relative_path))
+
+        # Ensure the destination directory exists
+        os.makedirs(dest_dir, exist_ok=True)
+
+        cmd = ["rsync", "-avh", "--remove-source-files", f"--chown={USER}:{GROUP}", f"--chmod={CHMOD}", src, dest_dir]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.error(f"Error moving file from {src} to {dest_dir} using rsync. Return code: {result.returncode}. Output: {result.stdout}. Error: {result.stderr}")
+        else:
+            logger.info(f"Moved {src} to {os.path.join(dest_dir, os.path.basename(src))}")
+    except subprocess.CalledProcessError as cpe:
+        logger.error(f"Error moving file from {src} to {dest_dir} using rsync. Error: {cpe}")
     except Exception as e:
-        logger.error(f"Unexpected error moving file: {e}")
+        logger.error(f"Unexpected error moving file from {src} to {dest_dir}: {e}")
 
 def move_files_concurrently(files_to_move):
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -97,7 +109,7 @@ def move_files_concurrently(files_to_move):
                 logger.error(f"Error moving file: {e}")
 
 def delete_empty_dirs(path):
-    """Recursively delete empty directories."""
+    # Recursively delete empty directories.
     # If the path itself is not a directory, exit.
     if not os.path.isdir(path):
         return

@@ -1,11 +1,14 @@
 # Configuration for the mover script
 Paths:
-  CACHE_PATH: /path/to/cachedisk #Path to cache disk !!not the cached pool!!
-  BACKING_PATH: /path/to/backendpool #Path to backing storage pool w/o cache
-  LOG_PATH: /path/to/logfile.log
+  CACHE_PATH: /mnt/cache-disks/cache01
+  BACKING_PATH: /mnt/media-cold
+  LOG_PATH: /var/log/cache-mover.log
 
 Settings:
-  THRESHOLD_PERCENTAGE: 90 #Percentage at which the mover will start
+  THRESHOLD_PERCENTAGE: 10
+  USER: media
+  GROUP: media
+  CHMOD: 770
   MAX_WORKERS: 8
-  MAX_LOG_SIZE_MB: 100  # 100MB
-  BACKUP_COUNT: 5  # keep up to 5 backup log files
+  MAX_LOG_SIZE_MB: 100
+  BACKUP_COUNT: 5
