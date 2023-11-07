@@ -39,9 +39,9 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `MAX_WORKERS`: The maximum number of parallel file-moving operations.
 - `MAX_LOG_SIZE_MB`: The maximum size for the log file before it's rotated.
 - `BACKUP_COUNT`: The number of backup log files to maintain.
-- `USER`: Set this to the username that should have ownership of the files.
-- `GROUP`: Set this to the group that should have ownership of the files.
-- `CHMOD`: Set this to apply the permissions for the above user/group.
+- `USER`: The username that should have ownership of the files.
+- `GROUP`: The group that should have ownership of the files.
+- `CHMOD`: The permissions to set for the above user/group on all files moved.
 
 ## Usage
 To run the script, use the following command from your terminal:
