@@ -18,7 +18,12 @@ The script logs its operations, which includes information on moved files, error
 - PyYAML (to be installed from `requirements.txt`)
 
 ## Setup
-1. Install the required Python package using pip:
+1. To get started, clone the repository to your local machine using the following command:
+```shell
+git clone https://github.com/MonsterMuffin/mergerfs-cache-mover.git
+```
+
+2. Install the required Python package using pip:
 ```shell
 pip install -r requirements.txt
 ```
@@ -49,7 +54,9 @@ Of course, this is meant to be run automatically....
 
 ## Automated Execution
 
-### Systemd Timer
+Use either a Systemd timer or Crontab entry. I have been moving from crontab to systemd timers myself, but you live your life how you see fit.
+
+### Option 1: Systemd Timer
 1. Create a systemd service file `/etc/systemd/system/cache_mover.service`. Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 ```ini
@@ -88,7 +95,7 @@ systemctl start cache_mover.timer
 systemctl list-timers
 ```
 
-### Crontab
+### Option 2: Crontab
 
 1. Open crontab file for editing:
 
@@ -103,3 +110,7 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 ```cron
 0 3 * * * /usr/bin/python3 /path/to/cache-mover.py
 ```
+
+## Fin.
+
+I take no responsibility for what my shitty coding does to your data. This has been working well for me, but always take care.
