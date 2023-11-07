@@ -5,7 +5,8 @@ Paths:
   LOG_PATH: /var/log/cache-mover.log
 
 Settings:
-  THRESHOLD_PERCENTAGE: 10
+  THRESHOLD_PERCENTAGE: 30
+  TARGET_PERCENTAGE: 10
   USER: media
   GROUP: media
   CHMOD: 770

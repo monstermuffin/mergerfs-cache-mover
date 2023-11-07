@@ -1,3 +1,5 @@
+#Muffin's mergerfs cache mover. https://github.com/MonsterMuffin/mergerfs-cache-mover
+
 import os
 import shutil
 import logging
@@ -14,9 +16,13 @@ CACHE_PATH = config['Paths']['CACHE_PATH']
 BACKING_PATH = config['Paths']['BACKING_PATH']
 LOG_PATH = config['Paths']['LOG_PATH']
 THRESHOLD_PERCENTAGE = config['Settings']['THRESHOLD_PERCENTAGE']
+TARGET_PERCENTAGE = config['Settings']['TARGET_PERCENTAGE']
 MAX_WORKERS = config['Settings']['MAX_WORKERS']
 MAX_LOG_SIZE_MB = config['Settings']['MAX_LOG_SIZE_MB']
 BACKUP_COUNT = config['Settings']['BACKUP_COUNT']
+USER = config['Settings']['USER']
+GROUP = config['Settings']['GROUP']
+CHMOD = config['Settings']['CHMOD']
 
 # Convert log size from MB to bytes
 MAX_LOG_SIZE_BYTES = MAX_LOG_SIZE_MB * 1024 * 1024
@@ -71,13 +77,15 @@ def gather_files_to_move():
     all_files.sort(key=lambda fn: os.stat(fn).st_mtime)
     files_to_move = []
 
-    while get_fs_usage(CACHE_PATH) > THRESHOLD_PERCENTAGE and all_files:
+    # Use TARGET_PERCENTAGE to determine when to stop moving files
+    while get_fs_usage(CACHE_PATH) > TARGET_PERCENTAGE and all_files:
         oldest_file = all_files.pop(0)
         files_to_move.append(oldest_file)
     return files_to_move
 
+
 def move_file(src, dest_base):
-    """Move a file using rsync and log the action."""
+    # Move a file using rsync and log the action
     try:
         # Get the relative path of the source file with respect to CACHE_PATH
         relative_path = os.path.relpath(src, CACHE_PATH)
