@@ -72,10 +72,10 @@ ExecStart=/usr/bin/python3 /path/to/cache-mover.py
 
 ```ini
 [Unit]
-Description="Runs Muffin's Cache Mover Script every day."
+Description="Runs Muffin's Cache Mover Script Daily at 3AM."
 
 [Timer]
-OnCalendar=daily
+OnCalendar=*-*-* 03:00:00
 Persistent=true
 
 [Install]
