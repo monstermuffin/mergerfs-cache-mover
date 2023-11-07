@@ -10,7 +10,7 @@ The script operates by checking the disk usage of the cache directory. If the us
 
 The script uses a configuration file to manage settings such as paths, thresholds, and system parameters. It also checks for other instances of itself to prevent multiple concurrent operations, in the event a move process is still occurring from a previous run because you are using prehistoric storage or something.
 
-## Logging
+## Logging
 The script logs its operations, which includes information on moved files, errors, and other warnings. The logs are rotated based on the file size and backup count defined in config.yml.
 
 ## Requirements
