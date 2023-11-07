@@ -68,7 +68,7 @@ Type=oneshot
 ExecStart=/usr/bin/python3 /path/to/cache-mover.py
 ```
 
-2. Create a systemd timer file /etc/systemd/system/cache_mover.timer. The timer format is not the usual crontab format, [find out more](https://silentlad.com/systemd-timers-oncalendar-(cron)-format-explained) if you need help.
+2. Create a systemd timer file `/etc/systemd/system/cache_mover.timer`. The timer format is not the usual crontab format, [find out more](https://silentlad.com/systemd-timers-oncalendar-(cron)-format-explained) if you need help.
 
 ```ini
 [Unit]
