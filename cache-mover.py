@@ -15,10 +15,10 @@ with open('config.yml', 'r') as config_file:
 CACHE_PATH = config['Paths']['CACHE_PATH']
 BACKING_PATH = config['Paths']['BACKING_PATH']
 LOG_PATH = config['Paths']['LOG_PATH']
-THRESHOLD_PERCENTAGE = config['Settings']['THRESHOLD_PERCENTAGE']
+THRESHOLD_PERCENTAGE = float(config['Settings']['THRESHOLD_PERCENTAGE'])
 TARGET_PERCENTAGE = config['Settings']['TARGET_PERCENTAGE']
 MAX_WORKERS = config['Settings']['MAX_WORKERS']
-MAX_LOG_SIZE_MB = config['Settings']['MAX_LOG_SIZE_MB']
+MAX_LOG_SIZE_MB = int(config['Settings']['MAX_LOG_SIZE_MB'])
 BACKUP_COUNT = config['Settings']['BACKUP_COUNT']
 USER = config['Settings']['USER']
 GROUP = config['Settings']['GROUP']
