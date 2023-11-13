@@ -140,10 +140,15 @@ def main():
         return
 
     current_usage = get_fs_usage(CACHE_PATH)
+    logging.debug(f"Current cache usage: {current_usage:.2f}%")
+    logging.debug(f"Threshold percentage: {THRESHOLD_PERCENTAGE}%")
+
     if current_usage > THRESHOLD_PERCENTAGE:
         logging.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
         files_to_move = gather_files_to_move()
         move_files_concurrently(files_to_move)
+    else:
+        logging.info(f"Cache usage is below the threshold ({THRESHOLD_PERCENTAGE}%). No action required.")
 
     # Clean up any empty directories under the cache path
     for root_folder in [os.path.join(CACHE_PATH, d) for d in os.listdir(CACHE_PATH) if os.path.isdir(os.path.join(CACHE_PATH, d))]:
