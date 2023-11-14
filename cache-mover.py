@@ -8,8 +8,12 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
 
+# Get the absolute path to the script's directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(script_dir, 'config.yml')
+
 # Load configurations from config.yml
-with open('config.yml', 'r') as config_file:
+with open(config_path, 'r') as config_file:
     config = yaml.safe_load(config_file)
 
 CACHE_PATH = config['Paths']['CACHE_PATH']
