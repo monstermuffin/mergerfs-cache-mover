@@ -8,7 +8,7 @@ https://blog.muffn.io/posts/part-4-100tb-mini-nas/ (if that link doesn't work it
 ## How It Works
 The script operates by checking the disk usage of the cache directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are also cleaned up after files are moved.
 
-The script uses a configuration file to manage settings such as paths, thresholds, and system parameters. It also checks for other instances of itself to prevent multiple concurrent operations, in the event a move process is still occurring from a previous run because you are using prehistoric storage or something.
+The script uses a configuration file to manage settings such as paths, thresholds, and system parameters. It also checks for other instances of itself to prevent multiple concurrent operations, in the event a move process is still occurring from a previous run either because you are using slow storage, running the script too regularly, or both.
 
 ## Logging
 The script logs its operations, which includes information on moved files, errors, and other warnings. The logs are rotated based on the file size and backup count defined in config.yml.
@@ -113,4 +113,4 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 ## Fin.
 
-I take no responsibility for what my shitty coding does to your data. This has been working well for me, but always take care.
+This has been working well for me, but always take care.
