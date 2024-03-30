@@ -100,7 +100,7 @@ def move_file(src, dest_base):
         # Ensure the destination directory exists
         os.makedirs(dest_dir, exist_ok=True)
 
-        cmd = ["rsync", "-avh", "--remove-source-files", f"--chown={USER}:{GROUP}", f"--chmod={CHMOD}", src, dest_dir]
+        cmd = ["rsync", "-avh", "--remove-source-files", f"--chown={USER}:{GROUP}", f"--chmod={CHMOD}", "--perms", "--chmod=D{CHMOD}", src, dest_dir]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.error(f"Error moving file from {src} to {dest_dir} using rsync. Return code: {result.returncode}. Output: {result.stdout}. Error: {result.stderr}")
