@@ -61,7 +61,7 @@ Use either a Systemd timer or Crontab entry. I have been moving from crontab to 
 
 ```ini
 [Unit]
-Description="Muffin's Cache Mover Script."
+Description="Cache Mover Script."
 
 [Service]
 Type=oneshot
@@ -72,7 +72,7 @@ ExecStart=/usr/bin/python3 /path/to/cache-mover.py
 
 ```ini
 [Unit]
-Description="Runs Muffin's Cache Mover Script Daily at 3AM."
+Description="Runs Cache Mover Script Daily at 3AM."
 
 [Timer]
 OnCalendar=*-*-* 03:00:00
