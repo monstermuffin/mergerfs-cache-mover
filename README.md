@@ -49,7 +49,7 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 To run the script, use the following command from your terminal:
 
 ```shell
-python3 cache-mover.py
+python3 cache-mover.py --console-log
 ```
 
 Of course, this is meant to be run automatically....
