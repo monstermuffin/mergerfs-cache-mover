@@ -12,5 +12,5 @@ Settings:
   BACKUP_COUNT: 5 #The number of backup log files to maintain.
   USER: media #The username that should have ownership of the files.
   GROUP: media #The group that should have ownership of the files.
-  FILE_CHMOD: '770'  # The permissions to set for the above user/group on all files moved.
-  DIR_CHMOD: '770'   # The permissions to set for the above user/group on all directories created.
+  FILE_CHMOD: '770'  # The permissions to set for the above user/group on all files moved. MUST BE A STRING!! (Inside '')
+  DIR_CHMOD: '770'   # The permissions to set for the above user/group on all directories created. MUST BE A STRING!! (Inside '')
