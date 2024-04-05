@@ -5,8 +5,15 @@ import shutil
 import logging
 import yaml
 import subprocess
+import signal
 from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
+import argparse
+
+# Add command-line arguments
+parser = argparse.ArgumentParser(description='Move files from cache to backing storage.')
+parser.add_argument('--console-log', action='store_true', help='Display logs in the console.')
+args = parser.parse_args()
 
 # Get the absolute path to the script's directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +33,8 @@ MAX_LOG_SIZE_MB = int(config['Settings']['MAX_LOG_SIZE_MB'])
 BACKUP_COUNT = int(config['Settings']['BACKUP_COUNT'])
 USER = config['Settings']['USER']
 GROUP = config['Settings']['GROUP']
-CHMOD = config['Settings']['CHMOD']
+FILE_CHMOD = config['Settings']['FILE_CHMOD']
+DIR_CHMOD = config['Settings']['DIR_CHMOD']
 
 # Convert log size from MB to bytes
 MAX_LOG_SIZE_BYTES = MAX_LOG_SIZE_MB * 1024 * 1024
@@ -39,10 +47,19 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(log_handler)
 
-# Add a StreamHandler to log to the console
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(log_formatter)
-logger.addHandler(console_handler)
+# Add a StreamHandler to log to the console if --console-log is specified
+if args.console_log:
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_formatter)
+    logger.addHandler(console_handler)
+
+def signal_handler(signal, frame):
+    logger.info("Received SIGINT signal. Waiting for the current file transfer to complete before exiting.")
+    # Set a flag to indicate that the script should exit after the current file transfer
+    global should_exit
+    should_exit = True
+
+signal.signal(signal.SIGINT, signal_handler)
 
 def is_script_running():
     current_pid = os.getpid()  # Getting the PID of the current script
@@ -100,7 +117,7 @@ def move_file(src, dest_base):
         # Ensure the destination directory exists
         os.makedirs(dest_dir, exist_ok=True)
 
-        cmd = ["rsync", "-avh", "--remove-source-files", f"--chown={USER}:{GROUP}", f"--chmod={CHMOD}", "--perms", "--chmod=D{CHMOD}", src, dest_dir]
+        cmd = ["rsync", "-avh", "--remove-source-files", f"--chown={USER}:{GROUP}", f"--chmod={FILE_CHMOD}", "--perms", f"--chmod=D{DIR_CHMOD}", src, dest_dir]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.error(f"Error moving file from {src} to {dest_dir} using rsync. Return code: {result.returncode}. Output: {result.stdout}. Error: {result.stderr}")
@@ -112,9 +129,15 @@ def move_file(src, dest_base):
         logger.error(f"Unexpected error moving file from {src} to {dest_dir}: {e}")
 
 def move_files_concurrently(files_to_move):
+    global should_exit
+    should_exit = False
+
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(move_file, src, BACKING_PATH) for src in files_to_move]
         for future in futures:
+            if should_exit:
+                logger.info("Exiting after the current file transfer completes.")
+                break
             try:
                 future.result()
             except Exception as e:

@@ -41,7 +41,9 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `BACKUP_COUNT`: The number of backup log files to maintain.
 - `USER`: The username that should have ownership of the files.
 - `GROUP`: The group that should have ownership of the files.
-- `CHMOD`: The permissions to set for the above user/group on all files moved.
+- `FILE_CHMOD`: The permissions to set for the specified user/group on all files moved. This value should be provided as a string (e.g., '770').
+- `DIR_CHMOD`: The permissions to set for the specified user/group on all directories created during the move process. This value should be provided as a string (e.g., '770').
+
 
 ## Usage
 To run the script, use the following command from your terminal:
