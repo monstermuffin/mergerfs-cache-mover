@@ -1,34 +1,41 @@
 # mergerfs-cache-mover
+
 Python script for moving files on a cached disk to a backing mergerFS disk pool.
 
 More information in this blog post:
-
 https://blog.muffn.io/posts/part-4-100tb-mini-nas/ (if that link doesn't work it's not released yet.)
 
 ## How It Works
+
 The script operates by checking the disk usage of the cache directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are also cleaned up after files are moved.
 
 The script uses a configuration file to manage settings such as paths, thresholds, and system parameters. It also checks for other instances of itself to prevent multiple concurrent operations, in the event a move process is still occurring from a previous run either because you are using slow storage, running the script too regularly, or both.
 
 ## Logging
+
 The script logs its operations, which includes information on moved files, errors, and other warnings. The logs are rotated based on the file size and backup count defined in config.yml.
 
 ## Requirements
+
 - Python 3.6 or higher
 - PyYAML (to be installed from `requirements.txt`)
 
 ## Setup
+
 1. To get started, clone the repository to your local machine using the following command:
+
 ```shell
 git clone https://github.com/MonsterMuffin/mergerfs-cache-mover.git
 ```
 
-2. Install the required Python package using pip:
+2. Install the required Python packages using pip:
+
 ```shell
 pip install -r requirements.txt
 ```
 
 ## Configuration Setup
+
 Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the appropriate values:
 
 - `CACHE_PATH`: The path to your cache directory. !!THIS IS YOUR CACHE DISK ROOT, NOT MERGERFS CACHE MOUNT!!
@@ -44,8 +51,8 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `FILE_CHMOD`: The permissions to set for the specified user/group on all files moved. This value should be provided as a string (e.g., '770').
 - `DIR_CHMOD`: The permissions to set for the specified user/group on all directories created during the move process. This value should be provided as a string (e.g., '770').
 
-
 ## Usage
+
 To run the script, use the following command from your terminal:
 
 ```shell
@@ -59,6 +66,7 @@ Of course, this is meant to be run automatically....
 Use either a Systemd timer or Crontab entry. I have been moving from crontab to systemd timers myself, but you live your life how you see fit.
 
 ### Option 1: Systemd Timer
+
 1. Create a systemd service file `/etc/systemd/system/cache_mover.service`. Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 ```ini
@@ -106,12 +114,37 @@ sudo crontab -e
 ```
 
 2. Add line to run script. The following example will run the script daily, at 3AM. You can adjust this by using a site such as [crontab.guru.](https://crontab.guru/)
-
 Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 ```cron
 0 3 * * * /usr/bin/python3 /path/to/cache-mover.py
 ```
+
+## Auto-Update Feature
+
+I have now included an auto-update feature. At runtime, the script checks for updates from the GitHub repository and automatically updates itself if a new version is available.
+
+Note: The auto-update feature is only available in versions after commit b140b0c10cdc48506c96e2e23a1b8a2bef82109d. Any version before this commit will not have this feature.
+
+## Changelog
+
+### v0.83
+
+- Added auto-update feature
+  - The script now checks for updates from the GitHub repository
+  - Automatically updates itself if a new version is available
+- Improved logging
+  - Added more detailed logging for the update process
+- Code refactoring and optimization
+  - Much tidier now my Python is slightly less shit, hopefully didn't break anything
+
+### v0.7
+
+- Initial release of the mergerfs-cache-mover script
+- Basic functionality for moving files from cache to backing storage
+- Configurable settings via config.yml
+- Logging with rotation
+- Support for both Systemd timer and Crontab scheduling
 
 ## Fin.
 
