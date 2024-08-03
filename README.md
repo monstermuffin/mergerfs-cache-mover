@@ -124,7 +124,7 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 I have now included an auto-update feature. At runtime, the script checks for updates from the GitHub repository and automatically updates itself if a new version is available.
 
-Note: The auto-update feature is only available in versions after commit b140b0c10cdc48506c96e2e23a1b8a2bef82109d. Any version before this commit will not have this feature.
+Note: The auto-update feature is only available in versions after commit [b140b0c](https://github.com/monstermuffin/mergerfs-cache-mover/tree/b140b0c10cdc48506c96e2e23a1b8a2bef82109d). Any version before this commit will not have this feature.
 
 ## Changelog
 
