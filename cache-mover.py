@@ -10,15 +10,23 @@ import requests
 import sys
 import psutil
 
-__version__ = "0.87"
+__version__ = "0.88"
+
+def get_script_dir():
+    return os.path.dirname(os.path.abspath(__file__))
 
 def get_current_commit_hash():
+    script_dir = get_script_dir()
     try:
-        return subprocess.check_output(['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL).decode('ascii').strip()
+        return subprocess.check_output(['git', '-C', script_dir, 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL).decode('ascii').strip()
     except subprocess.CalledProcessError:
         return None
 
-def auto_update():
+def auto_update(config):
+    if not config['Settings'].get('AUTO_UPDATE', True):
+        logging.info("Auto-update is disabled.")
+        return False
+
     current_commit = get_current_commit_hash()
     if not current_commit:
         logging.warning("Unable to get current commit hash. Make sure this is a git repository.")
@@ -35,26 +43,25 @@ def auto_update():
             logging.info("Attempting to auto-update...")
 
             try:
-                subprocess.check_call(['git', 'fetch', 'origin', 'main'], stderr=subprocess.DEVNULL)
-                subprocess.check_call(['git', 'reset', '--hard', 'origin/main'], stderr=subprocess.DEVNULL)
+                script_dir = get_script_dir()
+                subprocess.check_call(['git', '-C', script_dir, 'fetch', 'origin', 'main'], stderr=subprocess.DEVNULL)
+                subprocess.check_call(['git', '-C', script_dir, 'reset', '--hard', 'origin/main'], stderr=subprocess.DEVNULL)
                 logging.info("Update successful. Restarting script...")
 
-                os.execv(sys.executable, ['python'] + sys.argv)
+                os.execv(sys.executable, [sys.executable] + sys.argv)
             except subprocess.CalledProcessError as e:
                 logging.error(f"Failed to update: {e}")
                 return False
-
         else:
             logging.info(f"Already running the latest version (commit: {current_commit[:7]}).")
 
         return True
-
     except Exception as e:
         logging.error(f"Failed to check for updates: {e}")
         return False
 
 def load_config():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    script_dir = get_script_dir()
     config_path = os.path.join(script_dir, 'config.yml')
     with open(config_path, 'r') as config_file:
         config = yaml.safe_load(config_file)
@@ -64,6 +71,7 @@ def load_config():
     config['Settings']['MAX_WORKERS'] = int(config['Settings']['MAX_WORKERS'])
     config['Settings']['MAX_LOG_SIZE_MB'] = int(config['Settings']['MAX_LOG_SIZE_MB'])
     config['Settings']['BACKUP_COUNT'] = int(config['Settings']['BACKUP_COUNT'])
+    config['Settings']['AUTO_UPDATE'] = config['Settings'].get('AUTO_UPDATE', True)
 
     return config
 
@@ -175,7 +183,6 @@ def move_files_concurrently(files_to_move, config):
     final_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
     logging.info(f"File move complete. Final cache usage: {final_usage:.2f}%")
 
-
 def delete_empty_dirs(path, cache_path):
     if not os.path.isdir(path):
         return
@@ -202,8 +209,11 @@ def main():
         logger.warning("Another instance of the script is running. Exiting.")
         return
 
-    if not auto_update():
-        logging.warning("Proceeding with current version due to update failure or no updates available.")
+    if config['Settings'].get('AUTO_UPDATE', True):
+        if not auto_update(config):
+            logging.warning("Proceeding with current version due to update failure or no updates available.")
+    else:
+        logging.info("Auto-update is disabled. Skipping update check.")
 
     current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
     logger.info(f"Current cache usage: {current_usage:.2f}%")

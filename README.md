@@ -128,6 +128,16 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 
 ## Changelog
 
+### v0.88
+
+- Fixed auto-update functionality
+  - Resolved issues when run via cron/systemd or outside script directory
+  - Added AUTO_UPDATE configuration option to enable/disable auto-updates
+- Improved script reliability
+  - Added get_script_dir() function for consistent script directory detection
+  - Modified get_current_commit_hash() to use the script's directory
+  - Updated auto_update() function to use the script's directory for Git operations
+
 ### v0.83
 
 - Added auto-update feature
