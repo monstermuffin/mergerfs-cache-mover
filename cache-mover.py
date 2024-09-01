@@ -10,7 +10,7 @@ import requests
 import sys
 import psutil
 
-__version__ = "0.88"
+__version__ = "0.92"
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -145,17 +145,20 @@ def move_file(src, dest_base, config):
 
         relative_path = os.path.relpath(src, config['Paths']['CACHE_PATH'])
         dest_dir = os.path.join(dest_base, os.path.dirname(relative_path))
-        os.makedirs(dest_dir, exist_ok=True)
 
-        cmd = [
-            "rsync", "-avh", "--remove-source-files",
-            f"--chown={config['Settings']['USER']}:{config['Settings']['GROUP']}",
-            f"--chmod={config['Settings']['FILE_CHMOD']}",
-            "--perms", f"--chmod=D{config['Settings']['DIR_CHMOD']}",
-            src, dest_dir
+        move_cmd = [
+            "rsync", 
+            "-avh",
+            "--mkpath",
+            "--perms",
+            "--preallocate",
+            "--hard-links",
+            "--remove-source-files",
+            src, 
+            dest_dir
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(move_cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
             logging.error(f"Error moving file from {src} to {dest_dir}. Return code: {result.returncode}. Output: {result.stdout}. Error: {result.stderr}")

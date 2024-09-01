@@ -47,17 +47,34 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `MAX_WORKERS`: The maximum number of parallel file-moving operations.
 - `MAX_LOG_SIZE_MB`: The maximum size for the log file before it's rotated.
 - `BACKUP_COUNT`: The number of backup log files to maintain.
-- `USER`: The username that should have ownership of the files.
+<!-- - `USER`: The username that should have ownership of the files.
 - `GROUP`: The group that should have ownership of the files.
 - `FILE_CHMOD`: The permissions to set for the specified user/group on all files moved. This value should be provided as a string (e.g., '770').
-- `DIR_CHMOD`: The permissions to set for the specified user/group on all directories created during the move process. This value should be provided as a string (e.g., '770').
+- `DIR_CHMOD`: The permissions to set for the specified user/group on all directories created during the move process. This value should be provided as a string (e.g., '770'). -->
+
+## Rsync Options
+
+This script uses rsync with several options:
+
+-   -a (archive mode): Preserves file attributes, including timestamps, permissions, and ownership.
+-   -v (verbose): Provides detailed output, used for logging and debugging.
+-   -h (human-readable): Outputs numbers in a human-readable format.
+-   --perms: Explicitly preserves file permissions.
+-   --preallocate: Pre-allocates disk space for destination files.
+-   --hard-links: Preserves hard links.
+-   --remove-source-files: Removes the source files after a successful transfer, effectively "moving" the files rather than copying them.
+
+**This script must be run as root (using sudo) for the following reasons:**
+
+- File Permissions: Running as root ensures the script can read from and write to all directories, preserving original file permissions and ownership.
+- Directory Creation: Root access is required to create directories with the correct permissions in the destination path.
 
 ## Usage
 
-To run the script, use the following command from your terminal:
+To run the script manually, use the following command from your terminal:
 
 ```shell
-python3 cache-mover.py --console-log
+sudo python3 cache-mover.py --console-log
 ```
 
 Of course, this is meant to be run automatically....
@@ -128,6 +145,22 @@ I have now included an auto-update feature. At runtime, the script checks for up
 Note: The auto-update feature is only available in versions after commit [b140b0c](https://github.com/monstermuffin/mergerfs-cache-mover/tree/b140b0c10cdc48506c96e2e23a1b8a2bef82109d). Any version before this commit will not have this feature.
 
 ## Changelog
+
+### v0.92
+
+- Enhanced rsync command in move_file() function:
+  - Added --preallocate option to improve performance and reduce fragmentation
+  - Added --hard-links option to preserve hard links during file transfers
+- Updated README to reflect new rsync options
+
+
+### v0.91
+
+- Simplified permission handling in the move_file() function
+- Updated rsync command to use --perms option for explicit permission preservation
+  - Now using --mkpath to resolve issues with base path not existing on destination
+- Deprecated USER, GROUP, FILE_CHMOD, and DIR_CHMOD settings from config.yml
+- Updated README
 
 ### v0.88
 
