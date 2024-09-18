@@ -1,5 +1,6 @@
 import os
 import shutil
+import stat
 import logging
 import yaml
 import subprocess
@@ -10,7 +11,7 @@ import requests
 import sys
 import psutil
 
-__version__ = "0.92"
+__version__ = "0.95"
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -144,30 +145,28 @@ def move_file(src, dest_base, config):
             return False
 
         relative_path = os.path.relpath(src, config['Paths']['CACHE_PATH'])
-        dest_dir = os.path.join(dest_base, os.path.dirname(relative_path))
+        dest = os.path.join(dest_base, relative_path)
+        dest_dir = os.path.dirname(dest)
 
-        move_cmd = [
-            "rsync", 
-            "-avh",
-            "--mkpath",
-            "--perms",
-            "--preallocate",
-            "--hard-links",
-            "--remove-source-files",
-            src, 
-            dest_dir
-        ]
-
-        result = subprocess.run(move_cmd, capture_output=True, text=True)
-
-        if result.returncode != 0:
-            logging.error(f"Error moving file from {src} to {dest_dir}. Return code: {result.returncode}. Output: {result.stdout}. Error: {result.stderr}")
+        os.makedirs(dest_dir, exist_ok=True)
+        src_stat = os.stat(src)
+        if src_stat.st_nlink > 1:
+            subprocess.run(['cp', '-al', src, dest], check=True)
         else:
-            logging.info(f"Moved {src} to {os.path.join(dest_dir, os.path.basename(src))}")
+            shutil.copy2(src, dest)
+        os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
+        try:
+            os.chown(dest, src_stat.st_uid, src_stat.st_gid)
+        except PermissionError:
+            logging.warning(f"Unable to change ownership of {dest}. This may require root privileges.")
 
+        # Remove the original file
+        os.remove(src)
+
+        logging.info(f"Moved {src} to {dest}")
         return True
     except Exception as e:
-        logging.error(f"Unexpected error moving file from {src} to {dest_dir}: {e}")
+        logging.error(f"Unexpected error moving file from {src} to {dest}: {e}")
         return False
 
 def move_files_concurrently(files_to_move, config):
@@ -186,20 +185,23 @@ def move_files_concurrently(files_to_move, config):
     final_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
     logging.info(f"File move complete. Final cache usage: {final_usage:.2f}%")
 
-def delete_empty_dirs(path, cache_path):
-    if not os.path.isdir(path):
-        return
+    remove_empty_dirs(config['Paths']['CACHE_PATH'])
 
-    for child_dir in [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]:
-        delete_empty_dirs(os.path.join(path, child_dir), cache_path)
-
-    if not os.listdir(path) and path not in [os.path.join(cache_path, d) for d in os.listdir(cache_path) if os.path.isdir(os.path.join(cache_path, d))]:
-        logging.info(f"Removed empty directory: {path}")
-        os.rmdir(path)
+def remove_empty_dirs(path):
+    for root, dirs, files in os.walk(path, topdown=False):
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            if not os.listdir(dir_path):
+                try:
+                    os.rmdir(dir_path)
+                    logging.info(f"Removed empty directory: {dir_path}")
+                except OSError as e:
+                    logging.error(f"Error removing directory {dir_path}: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description='Move files from cache to backing storage.')
     parser.add_argument('--console-log', action='store_true', help='Display logs in the console.')
+    parser.add_argument('--dry-run', action='store_true', help='Perform a dry run without actually moving files.')
     args = parser.parse_args()
 
     config = load_config()
@@ -226,12 +228,14 @@ def main():
     if current_usage > config['Settings']['THRESHOLD_PERCENTAGE']:
         logger.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
         files_to_move = gather_files_to_move(config)
-        move_files_concurrently(files_to_move, config)
+        if args.dry_run:
+            logger.info("Dry run mode. The following files would be moved:")
+            for file in files_to_move:
+                logger.info(f"Would move: {file}")
+        else:
+            move_files_concurrently(files_to_move, config)
     else:
         logger.info(f"Cache usage is {current_usage:.2f}%, below the threshold ({config['Settings']['THRESHOLD_PERCENTAGE']}%). No action required.")
-
-    for root_folder in [os.path.join(config['Paths']['CACHE_PATH'], d) for d in os.listdir(config['Paths']['CACHE_PATH']) if os.path.isdir(os.path.join(config['Paths']['CACHE_PATH'], d))]:
-        delete_empty_dirs(root_folder, config['Paths']['CACHE_PATH'])
 
 if __name__ == "__main__":
     main()

@@ -52,17 +52,15 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `FILE_CHMOD`: The permissions to set for the specified user/group on all files moved. This value should be provided as a string (e.g., '770').
 - `DIR_CHMOD`: The permissions to set for the specified user/group on all directories created during the move process. This value should be provided as a string (e.g., '770'). -->
 
-## Rsync Options
+## File Moving Process
 
-This script uses rsync with several options:
+This script now uses Python's built-in file operations instead of rsync:
 
--   -a (archive mode): Preserves file attributes, including timestamps, permissions, and ownership.
--   -v (verbose): Provides detailed output, used for logging and debugging.
--   -h (human-readable): Outputs numbers in a human-readable format.
--   --perms: Explicitly preserves file permissions.
--   --preallocate: Pre-allocates disk space for destination files.
--   --hard-links: Preserves hard links.
--   --remove-source-files: Removes the source files after a successful transfer, effectively "moving" the files rather than copying them.
+  - `shutil.copy2()`: Copies files while preserving metadata.
+  - `os.chmod()`: Explicitly sets file permissions to match the source.
+  - `os.chown()`: Attempts to set file ownership to match the source (may require root privileges).
+  - `os.remove()`: Removes the source file after successful copy.
+
 
 **This script must be run as root (using sudo) for the following reasons:**
 
@@ -75,6 +73,12 @@ To run the script manually, use the following command from your terminal:
 
 ```shell
 sudo python3 cache-mover.py --console-log
+```
+
+You can also specify `--dry-run`
+
+```shell
+sudo python3 cache-mover.py --dry-run --console-log
 ```
 
 Of course, this is meant to be run automatically....
@@ -145,6 +149,16 @@ I have now included an auto-update feature. At runtime, the script checks for up
 Note: The auto-update feature is only available in versions after commit [b140b0c](https://github.com/monstermuffin/mergerfs-cache-mover/tree/b140b0c10cdc48506c96e2e23a1b8a2bef82109d). Any version before this commit will not have this feature.
 
 ## Changelog
+
+### v0.95
+
+  - Fixed accidental directory collapse in backend pool upon directory manipulation
+  - Replaced rsync with Python's built-in file operations for better control and compatibility
+  - Added explicit permission and ownership preservation
+  - Added --dry-run option for testing without file movement
+  - "Improved" empty directory removal process
+  - Enhanced logging
+
 
 ### v0.92
 
