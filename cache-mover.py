@@ -97,13 +97,12 @@ def setup_logging(config, console_log):
 
 def is_script_running():
     current_process = psutil.Process()
-    current_cmdline = ' '.join(current_process.cmdline())
+    current_script = os.path.abspath(__file__)
     for process in psutil.process_iter(['pid', 'cmdline']):
         if process.pid != current_process.pid:
             try:
-                cmdline = ' '.join(process.cmdline())
-                if os.path.basename(__file__) in cmdline and cmdline == current_cmdline:
-                    return True, [cmdline]
+                if current_script in process.cmdline():
+                    return True, [' '.join(process.cmdline())]
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
     return False, []
