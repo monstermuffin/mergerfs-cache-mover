@@ -150,8 +150,14 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 
 ## Changelog
 
-### v0.95
+### v0.96.5
+ - Fixed child process detection
 
+ ### v0.96
+ - Fixed existing process detection
+
+
+### v0.95
   - Fixed accidental directory collapse in backend pool upon directory manipulation
   - Replaced rsync with Python's built-in file operations for better control and compatibility
   - Added explicit permission and ownership preservation
@@ -161,7 +167,6 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 
 
 ### v0.92
-
 - Enhanced rsync command in move_file() function:
   - Added --preallocate option to improve performance and reduce fragmentation
   - Added --hard-links option to preserve hard links during file transfers
@@ -169,7 +174,6 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 
 
 ### v0.91
-
 - Simplified permission handling in the move_file() function
 - Updated rsync command to use --perms option for explicit permission preservation
   - Now using --mkpath to resolve issues with base path not existing on destination
@@ -177,7 +181,6 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 - Updated README
 
 ### v0.88
-
 - Fixed auto-update functionality
   - Resolved issues when run via cron/systemd or outside script directory
   - Added AUTO_UPDATE configuration option to enable/disable auto-updates
@@ -187,7 +190,6 @@ Note: The auto-update feature is only available in versions after commit [b140b0
   - Updated auto_update() function to use the script's directory for Git operations
 
 ### v0.83
-
 - Added auto-update feature
   - The script now checks for updates from the GitHub repository
   - Automatically updates itself if a new version is available
@@ -197,7 +199,6 @@ Note: The auto-update feature is only available in versions after commit [b140b0
   - Much tidier now my Python is slightly less shit, hopefully didn't break anything
 
 ### v0.7
-
 - Initial release of the mergerfs-cache-mover script
 - Basic functionality for moving files from cache to backing storage
 - Configurable settings via config.yml
@@ -205,5 +206,4 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 - Support for both Systemd timer and Crontab scheduling
 
 ## Fin.
-
 This has been working well for me, but always take care.

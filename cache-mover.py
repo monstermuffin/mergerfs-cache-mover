@@ -11,7 +11,7 @@ import requests
 import sys
 import psutil
 
-__version__ = "0.95"
+__version__ = "0.96.5"
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -98,14 +98,25 @@ def setup_logging(config, console_log):
 def is_script_running():
     current_process = psutil.Process()
     current_script = os.path.abspath(__file__)
-    for process in psutil.process_iter(['pid', 'cmdline']):
+    script_name = os.path.basename(current_script)
+    
+    for process in psutil.process_iter(['pid', 'name', 'cmdline']):
         if process.pid != current_process.pid:
             try:
-                if current_script in process.cmdline():
-                    return True, [' '.join(process.cmdline())]
+                if process.name() == 'python' or process.name() == 'python3':
+                    cmdline = process.cmdline()
+                    if len(cmdline) >= 2 and script_name in cmdline[-1]:
+                        if not is_child_process(current_process, process):
+                            return True, [' '.join(cmdline)]
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
     return False, []
+
+def is_child_process(parent, child):
+    try:
+        return child.ppid() == parent.pid
+    except psutil.NoSuchProcess:
+        return False
 
 def get_fs_usage(path):
     total, used, _ = shutil.disk_usage(path)
@@ -159,7 +170,6 @@ def move_file(src, dest_base, config):
         except PermissionError:
             logging.warning(f"Unable to change ownership of {dest}. This may require root privileges.")
 
-        # Remove the original file
         os.remove(src)
 
         logging.info(f"Moved {src} to {dest}")
