@@ -150,6 +150,12 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 
 ## Changelog
 
+### v0.97
+ - Re-added excluded dirs option. This is required as my Snapraid dir was moved with the content file. By default, the `snapraid` dir is now excluded. 
+ - Fixed autoupdates not working when run automatically. 
+ - Remove logging whilst gathering files as this was spamming the log and had no real use. 
+ - Added check to ensure `THRESHOLD_PERCENTAGE` is greater than `TARGET_PERCENTAGE`.
+
 ### v0.96.5
  - Fixed child process detection
 

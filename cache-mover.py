@@ -78,6 +78,8 @@ def load_config():
     config['Settings']['AUTO_UPDATE'] = config['Settings'].get('AUTO_UPDATE', True)
     config['Settings']['EXCLUDED_DIRS'] = config['Settings'].get('EXCLUDED_DIRS', [])
 
+    if config['Settings']['THRESHOLD_PERCENTAGE'] <= config['Settings']['TARGET_PERCENTAGE']:
+        raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE")
     return config
 
 def setup_logging(config, console_log):
@@ -149,12 +151,8 @@ def gather_files_to_move(config):
 
     while get_fs_usage(config['Paths']['CACHE_PATH']) > config['Settings']['TARGET_PERCENTAGE'] and all_files:
         files_to_move.append(all_files.pop(0))
-        if len(files_to_move) % 10 == 0:
-            current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
-            logging.info(f"Current cache usage: {current_usage:.2f}%")
-            if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
-                logging.info(f"Reached target percentage. Stopping file gathering.")
-                break
+
+    logging.info(f"Total files to move: {len(files_to_move)}")
 
     return files_to_move
 
@@ -224,7 +222,12 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='Perform a dry run without actually moving files.')
     args = parser.parse_args()
 
-    config = load_config()
+    try:
+        config = load_config()
+    except ValueError as e:
+        print(f"Configuration error: {e}")
+        sys.exit(1)
+
     logger = setup_logging(config, args.console_log)
 
     script_dir = get_script_dir()

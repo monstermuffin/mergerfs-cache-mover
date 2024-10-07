@@ -1,3 +1,4 @@
 config.yml
 *.cpython*
 *.DS_STORE*
+.vscode/ltex*
