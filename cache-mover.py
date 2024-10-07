@@ -7,30 +7,34 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from logging.handlers import RotatingFileHandler
 import argparse
-import requests
 import sys
 import psutil
+import requests
 
-__version__ = "0.96.5"
+__version__ = "0.97"
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
-def get_current_commit_hash():
+def set_git_dir():
     script_dir = get_script_dir()
+    os.environ['GIT_DIR'] = os.path.join(script_dir, '.git')
+
+def get_current_commit_hash():
+    set_git_dir()
     try:
-        return subprocess.check_output(['git', '-C', script_dir, 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL).decode('ascii').strip()
-    except subprocess.CalledProcessError:
+        result = subprocess.run(['git', 'rev-parse', 'HEAD'],
+                                capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error getting current commit hash: {e}")
         return None
 
-def auto_update(config):
-    if not config['Settings'].get('AUTO_UPDATE', True):
-        logging.info("Auto-update is disabled.")
-        return False
-
+def auto_update():
+    set_git_dir()
     current_commit = get_current_commit_hash()
     if not current_commit:
-        logging.warning("Unable to get current commit hash. Make sure this is a git repository.")
+        logging.warning("Unable to get current commit hash. Skipping auto-update.")
         return False
 
     try:
@@ -44,11 +48,10 @@ def auto_update(config):
             logging.info("Attempting to auto-update...")
 
             try:
-                script_dir = get_script_dir()
-                subprocess.check_call(['git', '-C', script_dir, 'fetch', 'origin', 'main'], stderr=subprocess.DEVNULL)
-                subprocess.check_call(['git', '-C', script_dir, 'reset', '--hard', 'origin/main'], stderr=subprocess.DEVNULL)
-                logging.info("Update successful. Restarting script...")
+                subprocess.run(['git', 'fetch', 'origin', 'main'], check=True, capture_output=True, text=True)
+                subprocess.run(['git', 'reset', '--hard', 'origin/main'], check=True, capture_output=True, text=True)
 
+                logging.info("Update successful. Restarting script...")
                 os.execv(sys.executable, [sys.executable] + sys.argv)
             except subprocess.CalledProcessError as e:
                 logging.error(f"Failed to update: {e}")
@@ -73,6 +76,7 @@ def load_config():
     config['Settings']['MAX_LOG_SIZE_MB'] = int(config['Settings']['MAX_LOG_SIZE_MB'])
     config['Settings']['BACKUP_COUNT'] = int(config['Settings']['BACKUP_COUNT'])
     config['Settings']['AUTO_UPDATE'] = config['Settings'].get('AUTO_UPDATE', True)
+    config['Settings']['EXCLUDED_DIRS'] = config['Settings'].get('EXCLUDED_DIRS', [])
 
     return config
 
@@ -122,12 +126,19 @@ def get_fs_usage(path):
     total, used, _ = shutil.disk_usage(path)
     return (used / total) * 100
 
+def is_excluded(path, excluded_dirs):
+    return any(excluded_dir in path for excluded_dir in excluded_dirs)
+
 def gather_files_to_move(config):
-    all_files = [
-        os.path.join(dirname, filename)
-        for dirname, _, filenames in os.walk(config['Paths']['CACHE_PATH'])
-        for filename in filenames
-    ]
+    all_files = []
+    excluded_dirs = config['Settings']['EXCLUDED_DIRS']
+    
+    for dirname, subdirs, filenames in os.walk(config['Paths']['CACHE_PATH']):
+        subdirs[:] = [d for d in subdirs if not is_excluded(os.path.join(dirname, d), excluded_dirs)]
+        
+        if not is_excluded(dirname, excluded_dirs):
+            for filename in filenames:
+                all_files.append(os.path.join(dirname, filename))
 
     if not all_files:
         logging.warning("No files found in CACHE_PATH.")
@@ -216,6 +227,10 @@ def main():
     config = load_config()
     logger = setup_logging(config, args.console_log)
 
+    script_dir = get_script_dir()
+    logging.info(f"Script directory: {script_dir}")
+    logging.info(f"Current working directory: {os.getcwd()}")
+
     running, processes = is_script_running()
     if running:
         for process in processes:
@@ -224,7 +239,7 @@ def main():
         return
 
     if config['Settings'].get('AUTO_UPDATE', True):
-        if not auto_update(config):
+        if not auto_update():
             logging.warning("Proceeding with current version due to update failure or no updates available.")
     else:
         logging.info("Auto-update is disabled. Skipping update check.")
