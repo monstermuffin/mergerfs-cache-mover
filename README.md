@@ -93,11 +93,15 @@ Use either a Systemd timer or Crontab entry. I have been moving from crontab to 
 
 ```ini
 [Unit]
-Description="Cache Mover Script."
+Description="Muffin's Cache Mover Script."
+After=network.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 /path/to/cache-mover.py
+ExecStart=/usr/bin/python3 /opt/mergerfs-cache-mover/cache-mover.py
+WorkingDirectory=/opt/mergerfs-cache-mover
+
+[Install]
+WantedBy=multi-user.targe
 ```
 
 2. Create a systemd timer file `/etc/systemd/system/cache_mover.timer`. The timer format is not the usual crontab format, [find out more](https://silentlad.com/systemd-timers-oncalendar-(cron)-format-explained) if you need help.
