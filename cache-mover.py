@@ -4,7 +4,7 @@ import stat
 import logging
 import yaml
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from logging.handlers import RotatingFileHandler
 import argparse
 import sys
@@ -191,7 +191,10 @@ def gather_files_to_move(config):
     logging.info(f"Total files to move: {len(files_to_move)}")
     return files_to_move
 
-def move_file(src, dest_base, config, target_reached_lock, dry_run=False):
+def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_event=None):
+    if stop_event and stop_event.is_set():
+        return False, False
+
     with target_reached_lock:
         current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
         if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
@@ -203,13 +206,13 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False):
         dest_dir = os.path.dirname(dest)
 
         if dry_run:
-            logging.info(f"Would move file: {src} to {dest}")
+            logging.info("Would move file", extra={'file_move': True, 'src': src, 'dest': dest})
             return True, False
 
         free_space = get_fs_free_space(dest_base)
         file_size = os.path.getsize(src)
         if free_space < file_size:
-            logging.error(f"Not enough space to move file {src}. Required: {file_size}, Available: {free_space}")
+            logging.error(f"Not enough space to move file", extra={'file_move': True, 'src': src, 'dest': dest})
             return False, False
 
         os.makedirs(dest_dir, exist_ok=True)
@@ -222,14 +225,17 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False):
         try:
             os.chown(dest, src_stat.st_uid, src_stat.st_gid)
         except PermissionError:
-            logging.warning(f"Unable to change ownership of {dest}. This may require root privileges.")
+            logging.warning(f"Unable to change ownership", extra={'file_move': True, 'src': src, 'dest': dest})
+
+        if stop_event and stop_event.is_set():
+            return False, False
 
         os.remove(src)
 
         logging.info("File moved successfully", extra={'file_move': True, 'src': src, 'dest': dest})
         return True, False
     except Exception as e:
-        logging.error(f"Unexpected error moving file: {e}", extra={'file_move': True, 'src': src, 'dest': dest})
+        logging.error(f"Unexpected error moving file: {str(e)}", extra={'file_move': True, 'src': src, 'dest': dest})
         return False, False
 
 def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=None):
@@ -241,14 +247,16 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
         futures = []
         for src in files_to_move:
             if stop_event and stop_event.is_set():
-                logging.info("Graceful shutdown requested. Stopping file moves.")
+                logging.info("Graceful shutdown requested. Stopping new file moves.")
                 break
-            future = executor.submit(move_file, src, config['Paths']['BACKING_PATH'], config, target_reached_lock, dry_run)
+            future = executor.submit(move_file, src, config['Paths']['BACKING_PATH'], config, target_reached_lock, dry_run, stop_event)
             futures.append(future)
 
         target_reached = False
-        for future in futures:
+        for future in as_completed(futures):
             if stop_event and stop_event.is_set():
+                logging.info("Graceful shutdown in progress. Waiting for current moves to complete.")
+                executor.shutdown(wait=False)
                 break
             success, reached = future.result()
             if success:
@@ -256,6 +264,7 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
             if reached and not target_reached:
                 logging.info(f"Target percentage reached. Stopping new file moves.")
                 target_reached = True
+                executor.shutdown(wait=False)
                 break
 
     final_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
@@ -365,6 +374,9 @@ def main():
             logging.info(f"- Removed {empty_dirs_count} empty directories")
     else:
         logging.info(f"Cache usage is {current_usage:.2f}%, below the threshold ({config['Settings']['THRESHOLD_PERCENTAGE']}%). No action required.")
+
+    if stop_event.is_set():
+        logging.info("Script execution interrupted. Some operations may not have completed.")
 
 if __name__ == "__main__":
     main()

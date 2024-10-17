@@ -150,6 +150,23 @@ Note: The auto-update feature is only available in versions after commit [b140b0
 
 ## Changelog
 
+### v0.98.7
+
+ - Added a custom `HybridFormatter` class for more detailed logging of file move operations.
+ - Implemented a new `set_git_dir()` function to set the Git directory environment variable.
+ - Added support for specifying the update branch in the configuration (`UPDATE_BRANCH`).
+ - Introduced excluded directories feature (`EXCLUDED_DIRS`in config). By default the `Snapraid` folder is excluded as there were instances of this being moved.
+ - Added graceful shutdown handling using signal handlers (`SIGINT` and `SIGTERM`). This could possibly use more work to be honest.
+ - Implemented free space checking before file moves.
+ - Enhanced `auto_update()` function with better error handling and logging.
+ - Refactored `move_file()` function for better error handling and logging.
+ - Addressed potential race condition in checking filesystem usage with a lock mechanism. This should have cleared log spamming by the threads too. 
+ - Added validation to ensure `THRESHOLD_PERCENTAGE` is greater than `TARGET_PERCENTAGE`.
+
+ #### TODO:
+
+ - Replace `os.walk()` with `os.scandir()`.
+
 ### v0.97
  - Re-added excluded dirs option. This is required as my Snapraid dir was moved with the content file. By default, the `snapraid` dir is now excluded. 
  - Fixed autoupdates not working when run automatically. 
