@@ -10,8 +10,9 @@ import argparse
 import sys
 import psutil
 import requests
+from threading import Lock
 
-__version__ = "0.97"
+__version__ = "0.97.5"
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -156,12 +157,12 @@ def gather_files_to_move(config):
 
     return files_to_move
 
-def move_file(src, dest_base, config):
+def move_file(src, dest_base, config, target_reached_lock):
     try:
-        current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
-        if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
-            logging.info(f"Reached target percentage ({current_usage:.2f}%). Skipping further file moves.")
-            return False
+        with target_reached_lock:
+            current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
+            if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
+                return False
 
         relative_path = os.path.relpath(src, config['Paths']['CACHE_PATH'])
         dest = os.path.join(dest_base, relative_path)
@@ -188,22 +189,27 @@ def move_file(src, dest_base, config):
         return False
 
 def move_files_concurrently(files_to_move, config):
+    target_reached_lock = Lock()
+    target_reached = False
     with ThreadPoolExecutor(max_workers=config['Settings']['MAX_WORKERS']) as executor:
         futures = []
         for src in files_to_move:
-            if get_fs_usage(config['Paths']['CACHE_PATH']) <= config['Settings']['TARGET_PERCENTAGE']:
-                logging.info(f"Reached target percentage. Stopping file move.")
+            if target_reached:
                 break
-            futures.append(executor.submit(move_file, src, config['Paths']['BACKING_PATH'], config))
+            future = executor.submit(move_file, src, config['Paths']['BACKING_PATH'], config, target_reached_lock)
+            futures.append(future)
 
         for future in futures:
-            if not future.result():
-                break
+            result = future.result()
+            if not result:
+                with target_reached_lock:
+                    if get_fs_usage(config['Paths']['CACHE_PATH']) <= config['Settings']['TARGET_PERCENTAGE']:
+                        if not target_reached:
+                            logging.info(f"Reached target percentage. Stopping new file moves.")
+                            target_reached = True
 
     final_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
     logging.info(f"File move complete. Final cache usage: {final_usage:.2f}%")
-
-    remove_empty_dirs(config['Paths']['CACHE_PATH'])
 
 def remove_empty_dirs(path):
     for root, dirs, files in os.walk(path, topdown=False):
