@@ -47,10 +47,6 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `MAX_WORKERS`: The maximum number of parallel file-moving operations.
 - `MAX_LOG_SIZE_MB`: The maximum size for the log file before it's rotated.
 - `BACKUP_COUNT`: The number of backup log files to maintain.
-<!-- - `USER`: The username that should have ownership of the files.
-- `GROUP`: The group that should have ownership of the files.
-- `FILE_CHMOD`: The permissions to set for the specified user/group on all files moved. This value should be provided as a string (e.g., '770').
-- `DIR_CHMOD`: The permissions to set for the specified user/group on all directories created during the move process. This value should be provided as a string (e.g., '770'). -->
 
 ## File Moving Process
 
@@ -58,7 +54,7 @@ This script now uses Python's built-in file operations instead of rsync:
 
   - `shutil.copy2()`: Copies files while preserving metadata.
   - `os.chmod()`: Explicitly sets file permissions to match the source.
-  - `os.chown()`: Attempts to set file ownership to match the source (may require root privileges).
+  - `os.chown()`: Attempts to set file ownership to match the source.
   - `os.remove()`: Removes the source file after successful copy.
 
 
@@ -85,11 +81,11 @@ Of course, this is meant to be run automatically....
 
 ## Automated Execution
 
-Use either a Systemd timer or Crontab entry. I have been moving from crontab to systemd timers myself, but you live your life how you see fit.
+Use either a `systemd` timer or Crontab entry. I have been moving from crontab to `systemd` timers myself, but you live your life how you see fit.
 
 ### Option 1: Systemd Timer
 
-1. Create a systemd service file `/etc/systemd/system/cache_mover.service`. Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
+1. Create a `systemd` service file `/etc/systemd/system/cache_mover.service`. Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 ```ini
 [Unit]
@@ -152,7 +148,7 @@ I have now included an auto-update feature. At runtime, the script checks for up
 
 Note: The auto-update feature is only available in versions after commit [b140b0c](https://github.com/monstermuffin/mergerfs-cache-mover/tree/b140b0c10cdc48506c96e2e23a1b8a2bef82109d). Any version before this commit will not have this feature.
 
-## Changelog
+## Change log
 
 ### v0.98.7
 
