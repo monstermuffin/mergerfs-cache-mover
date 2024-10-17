@@ -12,7 +12,7 @@ import psutil
 import requests
 from threading import Lock
 
-__version__ = "0.97.5"
+__version__ = "0.98.0"
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -31,38 +31,54 @@ def get_current_commit_hash():
         logging.error(f"Error getting current commit hash: {e}")
         return None
 
-def auto_update():
+def run_git_command(command, error_message):
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        return result
+    except subprocess.CalledProcessError as e:
+        logging.error(f"{error_message} Command: {e.cmd}")
+        logging.error(f"Error output: {e.stderr}")
+        raise
+
+def auto_update(config):
     set_git_dir()
     current_commit = get_current_commit_hash()
     if not current_commit:
         logging.warning("Unable to get current commit hash. Skipping auto-update.")
         return False
 
+    update_branch = config['Settings'].get('UPDATE_BRANCH', 'main')
+    
     try:
-        api_url = "https://api.github.com/repos/MonsterMuffin/mergerfs-cache-mover/commits/main"
+        api_url = f"https://api.github.com/repos/MonsterMuffin/mergerfs-cache-mover/commits/{update_branch}"
         response = requests.get(api_url)
         response.raise_for_status()
         latest_commit = response.json()['sha']
 
         if latest_commit != current_commit:
-            logging.info(f"A new version is available. Current: {current_commit[:7]}, Latest: {latest_commit[:7]}")
+            logging.info(f"A new version is available on branch '{update_branch}'. Current: {current_commit[:7]}, Latest: {latest_commit[:7]}")
             logging.info("Attempting to auto-update...")
 
             try:
-                subprocess.run(['git', 'fetch', 'origin', 'main'], check=True, capture_output=True, text=True)
-                subprocess.run(['git', 'reset', '--hard', 'origin/main'], check=True, capture_output=True, text=True)
+                run_git_command(['git', 'fetch', 'origin', update_branch], 
+                                f"Failed to fetch updates from {update_branch}.")
+                
+                run_git_command(['git', 'reset', '--hard', f'origin/{update_branch}'], 
+                                f"Failed to reset to latest commit on {update_branch}.")
 
                 logging.info("Update successful. Restarting script...")
                 os.execv(sys.executable, [sys.executable] + sys.argv)
-            except subprocess.CalledProcessError as e:
-                logging.error(f"Failed to update: {e}")
+            except subprocess.CalledProcessError:
                 return False
         else:
-            logging.info(f"Already running the latest version (commit: {current_commit[:7]}).")
+            logging.info(f"Already running the latest version on branch '{update_branch}' (commit: {current_commit[:7]}).")
 
         return True
-    except Exception as e:
+    except requests.RequestException as e:
         logging.error(f"Failed to check for updates: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Unexpected error during update process: {e}")
         return False
 
 def load_config():
@@ -77,6 +93,7 @@ def load_config():
     config['Settings']['MAX_LOG_SIZE_MB'] = int(config['Settings']['MAX_LOG_SIZE_MB'])
     config['Settings']['BACKUP_COUNT'] = int(config['Settings']['BACKUP_COUNT'])
     config['Settings']['AUTO_UPDATE'] = config['Settings'].get('AUTO_UPDATE', True)
+    config['Settings']['UPDATE_BRANCH'] = config['Settings'].get('UPDATE_BRANCH', 'main')
     config['Settings']['EXCLUDED_DIRS'] = config['Settings'].get('EXCLUDED_DIRS', [])
 
     if config['Settings']['THRESHOLD_PERCENTAGE'] <= config['Settings']['TARGET_PERCENTAGE']:
@@ -248,7 +265,8 @@ def main():
         return
 
     if config['Settings'].get('AUTO_UPDATE', True):
-        if not auto_update():
+        logging.info(f"Auto-update is enabled. Using branch: {config['Settings']['UPDATE_BRANCH']}")
+        if not auto_update(config):
             logging.warning("Proceeding with current version due to update failure or no updates available.")
     else:
         logging.info("Auto-update is disabled. Skipping update check.")

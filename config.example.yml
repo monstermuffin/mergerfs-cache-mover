@@ -6,6 +6,7 @@ Paths:
 
 Settings:
   AUTO_UPDATE: false
+  UPDATE_BRANCH: main  #main/dev
   THRESHOLD_PERCENTAGE: 70 #The usage percentage of the cache directory that triggers the file-moving process.
   TARGET_PERCENTAGE: 25 #The target usage percentage to achieve after moving files.
   MAX_WORKERS: 8 #The maximum number of parallel file-moving operations. Lower this if you don't have many disks or your cache isn't a speedy boii.
