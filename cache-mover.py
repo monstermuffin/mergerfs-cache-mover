@@ -12,7 +12,7 @@ import psutil
 import requests
 from threading import Lock
 
-__version__ = "0.98.4"
+__version__ = "0.98.6"
 
 class HybridFormatter(logging.Formatter):
     def __init__(self, fmt="%(levelname)s: %(message)s"):
@@ -188,13 +188,12 @@ def gather_files_to_move(config):
     return files_to_move
 
 def move_file(src, dest_base, config, target_reached_lock):
-    try:
-        with target_reached_lock:
-            current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
-            if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
-                logging.info(f"Target percentage reached, stopping file move. Current usage: {current_usage:.2f}%")
-                return False
+    with target_reached_lock:
+        current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
+        if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
+            return False, True
 
+    try:
         relative_path = os.path.relpath(src, config['Paths']['CACHE_PATH'])
         dest = os.path.join(dest_base, relative_path)
         dest_dir = os.path.dirname(dest)
@@ -214,30 +213,26 @@ def move_file(src, dest_base, config, target_reached_lock):
         os.remove(src)
 
         logging.info("File moved successfully", extra={'file_move': True, 'src': src, 'dest': dest})
-        return True
+        return True, False
     except Exception as e:
         logging.error(f"Unexpected error moving file: {e}", extra={'file_move': True, 'src': src, 'dest': dest})
-        return False
+        return False, False
 
 def move_files_concurrently(files_to_move, config):
     target_reached_lock = Lock()
-    target_reached = False
     with ThreadPoolExecutor(max_workers=config['Settings']['MAX_WORKERS']) as executor:
         futures = []
         for src in files_to_move:
-            if target_reached:
-                break
             future = executor.submit(move_file, src, config['Paths']['BACKING_PATH'], config, target_reached_lock)
             futures.append(future)
 
+        target_reached = False
         for future in futures:
-            result = future.result()
-            if not result:
-                with target_reached_lock:
-                    if get_fs_usage(config['Paths']['CACHE_PATH']) <= config['Settings']['TARGET_PERCENTAGE']:
-                        if not target_reached:
-                            logging.info(f"Reached target percentage. Stopping new file moves.")
-                            target_reached = True
+            success, reached = future.result()
+            if reached and not target_reached:
+                logging.info(f"Target percentage reached. Stopping new file moves.")
+                target_reached = True
+                break
 
     final_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
     logging.info(f"File move complete. Final cache usage: {final_usage:.2f}%")
