@@ -12,7 +12,40 @@ import psutil
 import requests
 from threading import Lock
 
-__version__ = "0.98.0"
+__version__ = "0.98.4"
+
+class HybridFormatter(logging.Formatter):
+    def __init__(self, fmt="%(levelname)s: %(message)s"):
+        super().__init__(fmt)
+
+    def format(self, record):
+        if hasattr(record, 'file_move'):
+            return (f"{self.formatTime(record)} - {record.levelname} - File Move Operation:\n"
+                    f"  From: {record.src}\n"
+                    f"  To: {record.dest}\n"
+                    f"  {record.msg}")
+        else:
+            return f"{self.formatTime(record)} - {record.levelname} - {record.msg}"
+
+def setup_logging(config, console_log):
+    log_formatter = HybridFormatter()
+    log_handler = RotatingFileHandler(
+        config['Paths']['LOG_PATH'],
+        maxBytes=config['Settings']['MAX_LOG_SIZE_MB'] * 1024 * 1024,
+        backupCount=config['Settings']['BACKUP_COUNT']
+    )
+    log_handler.setFormatter(log_formatter)
+    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.addHandler(log_handler)
+
+    if console_log:
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(log_formatter)
+        logger.addHandler(console_handler)
+
+    return logger
 
 def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
@@ -60,10 +93,9 @@ def auto_update(config):
             logging.info("Attempting to auto-update...")
 
             try:
-                run_git_command(['git', 'fetch', 'origin', update_branch], 
+                run_git_command(['git', 'fetch', 'origin', update_branch],
                                 f"Failed to fetch updates from {update_branch}.")
-                
-                run_git_command(['git', 'reset', '--hard', f'origin/{update_branch}'], 
+                run_git_command(['git', 'reset', '--hard', f'origin/{update_branch}'],
                                 f"Failed to reset to latest commit on {update_branch}.")
 
                 logging.info("Update successful. Restarting script...")
@@ -99,25 +131,6 @@ def load_config():
     if config['Settings']['THRESHOLD_PERCENTAGE'] <= config['Settings']['TARGET_PERCENTAGE']:
         raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE")
     return config
-
-def setup_logging(config, console_log):
-    log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    log_handler = RotatingFileHandler(
-        config['Paths']['LOG_PATH'],
-        maxBytes=config['Settings']['MAX_LOG_SIZE_MB'] * 1024 * 1024,
-        backupCount=config['Settings']['BACKUP_COUNT']
-    )
-    log_handler.setFormatter(log_formatter)
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    logger.addHandler(log_handler)
-
-    if console_log:
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(log_formatter)
-        logger.addHandler(console_handler)
-
-    return logger
 
 def is_script_running():
     current_process = psutil.Process()
@@ -179,6 +192,7 @@ def move_file(src, dest_base, config, target_reached_lock):
         with target_reached_lock:
             current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
             if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
+                logging.info(f"Target percentage reached, stopping file move. Current usage: {current_usage:.2f}%")
                 return False
 
         relative_path = os.path.relpath(src, config['Paths']['CACHE_PATH'])
@@ -199,10 +213,10 @@ def move_file(src, dest_base, config, target_reached_lock):
 
         os.remove(src)
 
-        logging.info(f"Moved {src} to {dest}")
+        logging.info("File moved successfully", extra={'file_move': True, 'src': src, 'dest': dest})
         return True
     except Exception as e:
-        logging.error(f"Unexpected error moving file from {src} to {dest}: {e}")
+        logging.error(f"Unexpected error moving file: {e}", extra={'file_move': True, 'src': src, 'dest': dest})
         return False
 
 def move_files_concurrently(files_to_move, config):
@@ -260,8 +274,8 @@ def main():
     running, processes = is_script_running()
     if running:
         for process in processes:
-            logger.warning(f"Detected process: {process}")
-        logger.warning("Another instance of the script is running. Exiting.")
+            logging.warning(f"Detected process: {process}")
+        logging.warning("Another instance of the script is running. Exiting.")
         return
 
     if config['Settings'].get('AUTO_UPDATE', True):
@@ -272,21 +286,21 @@ def main():
         logging.info("Auto-update is disabled. Skipping update check.")
 
     current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
-    logger.info(f"Current cache usage: {current_usage:.2f}%")
-    logger.info(f"Threshold percentage: {config['Settings']['THRESHOLD_PERCENTAGE']}%")
-    logger.info(f"Target percentage: {config['Settings']['TARGET_PERCENTAGE']}%")
+    logging.info(f"Current cache usage: {current_usage:.2f}%")
+    logging.info(f"Threshold percentage: {config['Settings']['THRESHOLD_PERCENTAGE']}%")
+    logging.info(f"Target percentage: {config['Settings']['TARGET_PERCENTAGE']}%")
 
     if current_usage > config['Settings']['THRESHOLD_PERCENTAGE']:
-        logger.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
+        logging.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
         files_to_move = gather_files_to_move(config)
         if args.dry_run:
-            logger.info("Dry run mode. The following files would be moved:")
+            logging.info("Dry run mode. The following files would be moved:")
             for file in files_to_move:
-                logger.info(f"Would move: {file}")
+                logging.info(f"Would move: {file}")
         else:
             move_files_concurrently(files_to_move, config)
     else:
-        logger.info(f"Cache usage is {current_usage:.2f}%, below the threshold ({config['Settings']['THRESHOLD_PERCENTAGE']}%). No action required.")
+        logging.info(f"Cache usage is {current_usage:.2f}%, below the threshold ({config['Settings']['THRESHOLD_PERCENTAGE']}%). No action required.")
 
 if __name__ == "__main__":
     main()
