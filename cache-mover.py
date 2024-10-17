@@ -10,9 +10,10 @@ import argparse
 import sys
 import psutil
 import requests
-from threading import Lock
+from threading import Lock, Event
+import signal
 
-__version__ = "0.98.6"
+__version__ = "0.98.7"
 
 class HybridFormatter(logging.Formatter):
     def __init__(self, fmt="%(levelname)s: %(message)s"):
@@ -159,6 +160,10 @@ def get_fs_usage(path):
     total, used, _ = shutil.disk_usage(path)
     return (used / total) * 100
 
+def get_fs_free_space(path):
+    total, _, free = shutil.disk_usage(path)
+    return free
+
 def is_excluded(path, excluded_dirs):
     return any(excluded_dir in path for excluded_dir in excluded_dirs)
 
@@ -184,10 +189,9 @@ def gather_files_to_move(config):
         files_to_move.append(all_files.pop(0))
 
     logging.info(f"Total files to move: {len(files_to_move)}")
-
     return files_to_move
 
-def move_file(src, dest_base, config, target_reached_lock):
+def move_file(src, dest_base, config, target_reached_lock, dry_run=False):
     with target_reached_lock:
         current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
         if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
@@ -197,6 +201,16 @@ def move_file(src, dest_base, config, target_reached_lock):
         relative_path = os.path.relpath(src, config['Paths']['CACHE_PATH'])
         dest = os.path.join(dest_base, relative_path)
         dest_dir = os.path.dirname(dest)
+
+        if dry_run:
+            logging.info(f"Would move file: {src} to {dest}")
+            return True, False
+
+        free_space = get_fs_free_space(dest_base)
+        file_size = os.path.getsize(src)
+        if free_space < file_size:
+            logging.error(f"Not enough space to move file {src}. Required: {file_size}, Available: {free_space}")
+            return False, False
 
         os.makedirs(dest_dir, exist_ok=True)
         src_stat = os.stat(src)
@@ -218,35 +232,66 @@ def move_file(src, dest_base, config, target_reached_lock):
         logging.error(f"Unexpected error moving file: {e}", extra={'file_move': True, 'src': src, 'dest': dest})
         return False, False
 
-def move_files_concurrently(files_to_move, config):
+def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=None):
     target_reached_lock = Lock()
+    files_moved_count = 0
+    total_size = sum(os.path.getsize(f) for f in files_to_move)
+    
     with ThreadPoolExecutor(max_workers=config['Settings']['MAX_WORKERS']) as executor:
         futures = []
         for src in files_to_move:
-            future = executor.submit(move_file, src, config['Paths']['BACKING_PATH'], config, target_reached_lock)
+            if stop_event and stop_event.is_set():
+                logging.info("Graceful shutdown requested. Stopping file moves.")
+                break
+            future = executor.submit(move_file, src, config['Paths']['BACKING_PATH'], config, target_reached_lock, dry_run)
             futures.append(future)
 
         target_reached = False
         for future in futures:
+            if stop_event and stop_event.is_set():
+                break
             success, reached = future.result()
+            if success:
+                files_moved_count += 1
             if reached and not target_reached:
                 logging.info(f"Target percentage reached. Stopping new file moves.")
                 target_reached = True
                 break
 
     final_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
-    logging.info(f"File move complete. Final cache usage: {final_usage:.2f}%")
+    logging.info(f"File move {'simulation' if dry_run else 'operation'} complete. Final cache usage: {final_usage:.2f}%")
+    return files_moved_count
 
-def remove_empty_dirs(path):
+def remove_empty_dirs(path, excluded_dirs, dry_run=False):
+    empty_dirs_count = 0
     for root, dirs, files in os.walk(path, topdown=False):
+        dirs[:] = [d for d in dirs if not is_excluded(os.path.join(root, d), excluded_dirs)]
         for dir in dirs:
             dir_path = os.path.join(root, dir)
             if not os.listdir(dir_path):
-                try:
-                    os.rmdir(dir_path)
-                    logging.info(f"Removed empty directory: {dir_path}")
-                except OSError as e:
-                    logging.error(f"Error removing directory {dir_path}: {e}")
+                if dry_run:
+                    logging.info(f"Would remove empty directory: {dir_path}")
+                    empty_dirs_count += 1
+                else:
+                    try:
+                        os.rmdir(dir_path)
+                        logging.info(f"Removed empty directory: {dir_path}")
+                        empty_dirs_count += 1
+                    except OSError as e:
+                        logging.error(f"Error removing directory {dir_path}: {e}")
+    
+    if dry_run:
+        if empty_dirs_count == 0:
+            logging.info("No empty directories found to remove")
+        else:
+            logging.info(f"Dry run: Would remove {empty_dirs_count} empty directories")
+    else:
+        if empty_dirs_count == 0:
+            logging.info("No empty directories were removed")
+        else:
+            logging.info(f"Removed {empty_dirs_count} empty directories")
+
+    return empty_dirs_count
 
 def main():
     parser = argparse.ArgumentParser(description='Move files from cache to backing storage.')
@@ -285,15 +330,39 @@ def main():
     logging.info(f"Threshold percentage: {config['Settings']['THRESHOLD_PERCENTAGE']}%")
     logging.info(f"Target percentage: {config['Settings']['TARGET_PERCENTAGE']}%")
 
+    stop_event = Event()
+    def signal_handler(signum, frame):
+        logging.info(f"Received signal {signum}. Initiating graceful shutdown.")
+        stop_event.set()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     if current_usage > config['Settings']['THRESHOLD_PERCENTAGE']:
         logging.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
         files_to_move = gather_files_to_move(config)
+        
         if args.dry_run:
-            logging.info("Dry run mode. The following files would be moved:")
-            for file in files_to_move:
-                logging.info(f"Would move: {file}")
+            logging.info("Dry run mode. Simulating file moves and directory cleanup:")
+            moved_files_count = move_files_concurrently(files_to_move, config, dry_run=True, stop_event=stop_event)
+            empty_dirs_count = remove_empty_dirs(config['Paths']['CACHE_PATH'], config['Settings']['EXCLUDED_DIRS'], dry_run=True)
+            
+            logging.info("Dry run summary:")
+            logging.info(f"- Would move {moved_files_count} files")
+            logging.info(f"- Would remove {empty_dirs_count} empty directories")
         else:
-            move_files_concurrently(files_to_move, config)
+            logging.info("Starting actual file move operation:")
+            moved_files_count = move_files_concurrently(files_to_move, config, dry_run=False, stop_event=stop_event)
+            if moved_files_count > 0:
+                logging.info(f"Moved {moved_files_count} files. Performing cleanup of empty directories.")
+                empty_dirs_count = remove_empty_dirs(config['Paths']['CACHE_PATH'], config['Settings']['EXCLUDED_DIRS'])
+                logging.info(f"Removed {empty_dirs_count} empty directories")
+            else:
+                logging.info("No files were moved. Skipping directory cleanup.")
+            
+            logging.info("Operation summary:")
+            logging.info(f"- Moved {moved_files_count} files")
+            logging.info(f"- Removed {empty_dirs_count} empty directories")
     else:
         logging.info(f"Cache usage is {current_usage:.2f}%, below the threshold ({config['Settings']['THRESHOLD_PERCENTAGE']}%). No action required.")
 
