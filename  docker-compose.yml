@@ -22,6 +22,7 @@ services:
     privileged: true
     restart: unless-stopped
 
+# Method 2: Using config file
 services:
   cache-mover:
     image: ghcr.io/monstermuffin/mergerfs-cache-mover:latest
