@@ -2,8 +2,7 @@
 
 Python script for moving files on a cached disk to a backing mergerFS disk pool.
 
-More information in this blog post:
-https://blog.muffn.io/posts/part-4-100tb-mini-nas/ (if that link doesn't work it's not released yet.)
+This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/) 
 
 ## How It Works
 
