@@ -1,21 +1,4 @@
-FROM python:3.12-slim as builder
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --no-cache-dir -r requirements.txt
-
 FROM python:3.12-slim
-
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
 
 ENV DOCKER_CONTAINER=1 \
     PYTHONUNBUFFERED=1
@@ -30,8 +13,10 @@ RUN apt-get update && \
 
 WORKDIR /app
 
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
-RUN pip install --no-cache-dir -r requirements.txt  # Install requirements in the final image too
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
