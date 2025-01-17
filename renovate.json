@@ -6,28 +6,45 @@
   ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["major"],
-      "baseBranches": ["main"],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "baseBranches": [
+        "main"
+      ],
       "automerge": false
     },
     {
-      "matchUpdateTypes": ["major"],
-      "baseBranches": ["dev"],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "baseBranches": [
+        "dev"
+      ],
       "automerge": true
     },
     {
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
       "automerge": true,
-      "stabilityDays": 3
+      "minimumReleaseAge": "3 days"
     },
     {
-      "matchDepTypes": ["devDependencies"],
+      "matchDepTypes": [
+        "devDependencies"
+      ],
       "automerge": true,
-      "stabilityDays": 3
+      "minimumReleaseAge": "3 days"
     }
   ],
   "vulnerabilityAlerts": {
-    "labels": ["security"],
+    "labels": [
+      "security"
+    ],
     "automerge": true,
     "vulnerabilityFixStrategy": "lowest"
   },
