@@ -24,13 +24,16 @@ ENV DOCKER_CONTAINER=1 \
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     git \
+    cron \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY . .
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD ps aux | grep '[c]ache-mover.py' || exit 1
 
-ENTRYPOINT ["python", "cache-mover.py", "--console-log"]
+ENTRYPOINT ["docker-entrypoint.sh"]

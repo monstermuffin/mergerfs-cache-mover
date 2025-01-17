@@ -127,7 +127,8 @@ def load_config():
             'MAX_LOG_SIZE_MB': 100,
             'BACKUP_COUNT': 1,
             'UPDATE_BRANCH': 'main',
-            'EXCLUDED_DIRS': []
+            'EXCLUDED_DIRS': [],
+            'SCHEDULE': '0 3 * * *'
         }
     }
 
@@ -149,7 +150,8 @@ def load_config():
         'MAX_LOG_SIZE_MB': ('Settings', 'MAX_LOG_SIZE_MB', int),
         'BACKUP_COUNT': ('Settings', 'BACKUP_COUNT', int),
         'UPDATE_BRANCH': ('Settings', 'UPDATE_BRANCH', str),
-        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: x.split(',') if x else [])
+        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: x.split(',') if x else []),
+        'SCHEDULE': ('Settings', 'SCHEDULE', str)
     }
 
     for env_var, (section, key, *convert) in env_mappings.items():
@@ -180,6 +182,25 @@ def is_script_running():
     current_script = os.path.abspath(__file__)
     script_name = os.path.basename(current_script)
     
+    # docker check for process inside container
+    if os.environ.get('DOCKER_CONTAINER'):
+        container_processes = [p for p in psutil.process_iter(['pid', 'name', 'cmdline']) 
+                             if p.pid != current_process.pid]
+        running_instances = []
+        
+        for process in container_processes:
+            try:
+                if process.name() == 'python' or process.name() == 'python3':
+                    cmdline = process.cmdline()
+                    if len(cmdline) >= 2 and script_name in cmdline[-1]:
+                        if not is_child_process(current_process, process):
+                            running_instances.append(' '.join(cmdline))
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+                
+        return bool(running_instances), running_instances
+    
+    # non-docker env
     for process in psutil.process_iter(['pid', 'name', 'cmdline']):
         if process.pid != current_process.pid:
             try:

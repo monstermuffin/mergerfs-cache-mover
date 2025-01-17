@@ -8,6 +8,7 @@ services:
       - CACHE_PATH=/mnt/cache-disks/cache01
       - BACKING_PATH=/mnt/media-cold
       # Optional settings with their default values
+      - SCHEDULE=0 3 * * *  # Run at 3 AM daily
       - THRESHOLD_PERCENTAGE=70
       - TARGET_PERCENTAGE=25
       - MAX_WORKERS=8
