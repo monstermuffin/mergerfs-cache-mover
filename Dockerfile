@@ -8,7 +8,6 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY requirements.txt .
-
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir -r requirements.txt
@@ -25,11 +24,14 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     git \
     cron \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /var/log && \
+    touch /var/log/cache-mover.log
 
 WORKDIR /app
 
 COPY . .
+RUN pip install --no-cache-dir -r requirements.txt  # Install requirements in the final image too
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
