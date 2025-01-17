@@ -24,16 +24,13 @@
       "matchDepTypes": ["devDependencies"],
       "automerge": true,
       "stabilityDays": 3
-    },
-    {
-      "matchUpdateTypes": ["patch", "minor", "major"],
-      "matchManagers": ["pip_requirements", "dockerfile", "docker-compose", "github-actions"],
-      "labels": ["security"],
-      "matchVulnerabilityAlerts": true,
-      "automerge": true,
-      "stabilityDays": 0
     }
   ],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "automerge": true,
+    "vulnerabilityFixStrategy": "lowest"
+  },
   "platformAutomerge": true,
   "commitMessageAction": "update",
   "commitMessageTopic": "{{depName}}",
