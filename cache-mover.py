@@ -185,8 +185,15 @@ def load_config():
     if os.environ.get('DOCKER_CONTAINER'):
         default_config['Settings']['AUTO_UPDATE'] = False
 
-    if default_config['Settings']['THRESHOLD_PERCENTAGE'] <= default_config['Settings']['TARGET_PERCENTAGE']:
-        raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE")
+    threshold = default_config['Settings']['THRESHOLD_PERCENTAGE']
+    target = default_config['Settings']['TARGET_PERCENTAGE']
+    
+    # empty mode when both 0 w/ log
+    if threshold == 0 and target == 0:
+        logging.info("Both THRESHOLD_PERCENTAGE and TARGET_PERCENTAGE are 0. Cache will be emptied completely.")
+    # else ensure threshold > target
+    elif threshold <= target:
+        raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE (or both must be 0 to empty cache completely)")
 
     return default_config
 
@@ -272,6 +279,12 @@ def gather_files_to_move(config):
     all_files.sort(key=lambda fn: os.stat(fn).st_mtime)
     files_to_move = []
 
+    # Add empty mode when both = 0
+    if config['Settings']['THRESHOLD_PERCENTAGE'] == 0 and config['Settings']['TARGET_PERCENTAGE'] == 0:
+        logging.info("Moving all files from cache (empty cache mode)")
+        return all_files
+    
+    # else continue as normal
     while get_fs_usage(config['Paths']['CACHE_PATH']) > config['Settings']['TARGET_PERCENTAGE'] and all_files:
         files_to_move.append(all_files.pop(0))
 
