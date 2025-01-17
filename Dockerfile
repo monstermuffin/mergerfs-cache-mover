@@ -1,4 +1,4 @@
-FROM python:3.14-slim as builder
+FROM python:3.12-slim as builder
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -13,7 +13,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
