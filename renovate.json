@@ -27,7 +27,7 @@
     },
     {
       "matchUpdateTypes": ["patch", "minor", "major"],
-      "matchManagers": ["pip-requirements", "dockerfile", "docker-compose", "github-actions"],
+      "matchManagers": ["pip_requirements", "dockerfile", "docker-compose", "github-actions"],
       "labels": ["security"],
       "matchVulnerabilityAlerts": true,
       "automerge": true,
