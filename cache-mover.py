@@ -13,7 +13,7 @@ import requests
 from threading import Lock, Event
 import signal
 
-__version__ = "0.98.7"
+__version__ = "1.0"
 
 class HybridFormatter(logging.Formatter):
     def __init__(self, fmt="%(levelname)s: %(message)s"):
