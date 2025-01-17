@@ -1,4 +1,7 @@
 # mergerfs-cache-mover
+
+# 🎉 v1.0 released with Docker support! 🎉
+
 Python script for moving files on a cached disk to a backing mergerFS disk pool.
 
 This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/) 
