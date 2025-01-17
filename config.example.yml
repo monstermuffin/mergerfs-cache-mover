@@ -7,11 +7,12 @@ Paths:
 Settings:
   AUTO_UPDATE: false
   UPDATE_BRANCH: main  #main/dev
-  THRESHOLD_PERCENTAGE: 70 #The usage percentage of the cache directory that triggers the file-moving process.
-  TARGET_PERCENTAGE: 25 #The target usage percentage to achieve after moving files.
+  THRESHOLD_PERCENTAGE: 70 #The usage percentage of the cache directory that triggers the file-moving process. Set both this and TARGET_PERCENTAGE to 0 to empty the cache completely (excluding excluded/snapraid files).
+  TARGET_PERCENTAGE: 25 #The target usage percentage to achieve after moving files. Set both this and THRESHOLD_PERCENTAGE to 0 to empty the cache completely.
   MAX_WORKERS: 8 #The maximum number of parallel file-moving operations. Lower this if you don't have many disks or your cache isn't a speedy boii.
   MAX_LOG_SIZE_MB: 100 #The maximum size for the log file before it's rotated.
   BACKUP_COUNT: 5 #The number of backup log files to maintain.
+  SCHEDULE: "0 3 * * *" #Cron schedule expression (Docker only - ignored when using systemd/cron)
   
   EXCLUDED_DIRS: #Dirs to exclude.
     - snapraid

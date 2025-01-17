@@ -13,7 +13,7 @@ import requests
 from threading import Lock, Event
 import signal
 
-__version__ = "0.98.7"
+__version__ = "1.0"
 
 class HybridFormatter(logging.Formatter):
     def __init__(self, fmt="%(levelname)s: %(message)s"):
@@ -115,29 +115,112 @@ def auto_update(config):
         return False
 
 def load_config():
+    # Hardcode snapraid-related exclusions because reasons
+    HARDCODED_EXCLUSIONS = [
+        'snapraid',
+        '.snapraid',
+        '.content'
+    ]
+
+    default_config = {
+        'Paths': {
+            'LOG_PATH': '/var/log/cache-mover.log'
+        },
+        'Settings': {
+            'AUTO_UPDATE': False,
+            'THRESHOLD_PERCENTAGE': 70,
+            'TARGET_PERCENTAGE': 25,
+            'MAX_WORKERS': 8,
+            'MAX_LOG_SIZE_MB': 100,
+            'BACKUP_COUNT': 1,
+            'UPDATE_BRANCH': 'main',
+            'EXCLUDED_DIRS': HARDCODED_EXCLUSIONS,
+            'SCHEDULE': '0 3 * * *'
+        }
+    }
+
     script_dir = get_script_dir()
     config_path = os.path.join(script_dir, 'config.yml')
-    with open(config_path, 'r') as config_file:
-        config = yaml.safe_load(config_file)
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as config_file:
+            file_config = yaml.safe_load(config_file)
+            default_config['Paths'].update(file_config.get('Paths', {}))
+            
+            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS', [])
+            combined_exclusions = list(set(HARDCODED_EXCLUSIONS + user_exclusions)) # merge exclusions
+            
+            settings_update = file_config.get('Settings', {})
+            settings_update['EXCLUDED_DIRS'] = combined_exclusions
+            default_config['Settings'].update(settings_update)
 
-    config['Settings']['THRESHOLD_PERCENTAGE'] = float(config['Settings']['THRESHOLD_PERCENTAGE'])
-    config['Settings']['TARGET_PERCENTAGE'] = float(config['Settings']['TARGET_PERCENTAGE'])
-    config['Settings']['MAX_WORKERS'] = int(config['Settings']['MAX_WORKERS'])
-    config['Settings']['MAX_LOG_SIZE_MB'] = int(config['Settings']['MAX_LOG_SIZE_MB'])
-    config['Settings']['BACKUP_COUNT'] = int(config['Settings']['BACKUP_COUNT'])
-    config['Settings']['AUTO_UPDATE'] = config['Settings'].get('AUTO_UPDATE', True)
-    config['Settings']['UPDATE_BRANCH'] = config['Settings'].get('UPDATE_BRANCH', 'main')
-    config['Settings']['EXCLUDED_DIRS'] = config['Settings'].get('EXCLUDED_DIRS', [])
+    env_mappings = {
+        'CACHE_PATH': ('Paths', 'CACHE_PATH'),
+        'BACKING_PATH': ('Paths', 'BACKING_PATH'),
+        'LOG_PATH': ('Paths', 'LOG_PATH'),
+        'THRESHOLD_PERCENTAGE': ('Settings', 'THRESHOLD_PERCENTAGE', float),
+        'TARGET_PERCENTAGE': ('Settings', 'TARGET_PERCENTAGE', float),
+        'MAX_WORKERS': ('Settings', 'MAX_WORKERS', int),
+        'MAX_LOG_SIZE_MB': ('Settings', 'MAX_LOG_SIZE_MB', int),
+        'BACKUP_COUNT': ('Settings', 'BACKUP_COUNT', int),
+        'UPDATE_BRANCH': ('Settings', 'UPDATE_BRANCH', str),
+        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: list(set(HARDCODED_EXCLUSIONS + (x.split(',') if x else [])))), # this should work?
+        'SCHEDULE': ('Settings', 'SCHEDULE', str)
+    }
 
-    if config['Settings']['THRESHOLD_PERCENTAGE'] <= config['Settings']['TARGET_PERCENTAGE']:
-        raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE")
-    return config
+    for env_var, (section, key, *convert) in env_mappings.items():
+        env_value = os.environ.get(env_var)
+        if env_value is not None:
+            if convert:
+                env_value = convert[0](env_value)
+            default_config[section][key] = env_value
+
+    required_paths = ['CACHE_PATH', 'BACKING_PATH']
+    missing_paths = [path for path in required_paths 
+                    if not default_config['Paths'].get(path)]
+    
+    if missing_paths:
+        raise ValueError(f"Required paths not configured: {', '.join(missing_paths)}. "
+                        f"Please set via config.yml or environment variables.")
+
+    if os.environ.get('DOCKER_CONTAINER'):
+        default_config['Settings']['AUTO_UPDATE'] = False
+
+    threshold = default_config['Settings']['THRESHOLD_PERCENTAGE']
+    target = default_config['Settings']['TARGET_PERCENTAGE']
+    
+    # empty mode when both 0 w/ log
+    if threshold == 0 and target == 0:
+        logging.info("Both THRESHOLD_PERCENTAGE and TARGET_PERCENTAGE are 0. Cache will be emptied completely.")
+    # else ensure threshold > target
+    elif threshold <= target:
+        raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE (or both must be 0 to empty cache completely)")
+
+    return default_config
 
 def is_script_running():
     current_process = psutil.Process()
     current_script = os.path.abspath(__file__)
     script_name = os.path.basename(current_script)
     
+    # docker check for process inside container
+    if os.environ.get('DOCKER_CONTAINER'):
+        container_processes = [p for p in psutil.process_iter(['pid', 'name', 'cmdline']) 
+                             if p.pid != current_process.pid]
+        running_instances = []
+        
+        for process in container_processes:
+            try:
+                if process.name() == 'python' or process.name() == 'python3':
+                    cmdline = process.cmdline()
+                    if len(cmdline) >= 2 and script_name in cmdline[-1]:
+                        if not is_child_process(current_process, process):
+                            running_instances.append(' '.join(cmdline))
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+                
+        return bool(running_instances), running_instances
+    
+    # non-docker env
     for process in psutil.process_iter(['pid', 'name', 'cmdline']):
         if process.pid != current_process.pid:
             try:
@@ -165,11 +248,22 @@ def get_fs_free_space(path):
     return free
 
 def is_excluded(path, excluded_dirs):
-    return any(excluded_dir in path for excluded_dir in excluded_dirs)
+    path_lower = path.lower()
+    filename = os.path.basename(path_lower)
+    
+    # check file patterns for content files
+    if filename.endswith('.content'):
+        return True
+    
+    # check dir patterns for snapraid
+    path_parts = path_lower.split(os.sep)
+    return any(excluded.lower() in path_parts for excluded in excluded_dirs)
 
 def gather_files_to_move(config):
     all_files = []
     excluded_dirs = config['Settings']['EXCLUDED_DIRS']
+    
+    logging.info(f"Exclusion patterns active: {', '.join(excluded_dirs)}")
     
     for dirname, subdirs, filenames in os.walk(config['Paths']['CACHE_PATH']):
         subdirs[:] = [d for d in subdirs if not is_excluded(os.path.join(dirname, d), excluded_dirs)]
@@ -185,6 +279,12 @@ def gather_files_to_move(config):
     all_files.sort(key=lambda fn: os.stat(fn).st_mtime)
     files_to_move = []
 
+    # Add empty mode when both = 0
+    if config['Settings']['THRESHOLD_PERCENTAGE'] == 0 and config['Settings']['TARGET_PERCENTAGE'] == 0:
+        logging.info("Moving all files from cache (empty cache mode)")
+        return all_files
+    
+    # else continue as normal
     while get_fs_usage(config['Paths']['CACHE_PATH']) > config['Settings']['TARGET_PERCENTAGE'] and all_files:
         files_to_move.append(all_files.pop(0))
 

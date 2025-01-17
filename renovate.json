@@ -1,6 +1,39 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
-  ]
+    "config:recommended",
+    ":semanticCommits"
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "matchBranches": ["main"],
+      "automerge": false
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "matchBranches": ["dev"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "stabilityDays": 3
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true,
+      "stabilityDays": 3
+    },
+    {
+      "matchSecurityAdvisories": ["CRITICAL", "HIGH", "MODERATE"],
+      "automerge": true,
+      "stabilityDays": 0
+    }
+  ],
+  "platformAutomerge": true,
+  "commitMessageAction": "update",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to {{newVersion}}",
+  "prCreation": "immediate"
 }
