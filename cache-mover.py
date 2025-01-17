@@ -115,23 +115,65 @@ def auto_update(config):
         return False
 
 def load_config():
+    default_config = {
+        'Paths': {
+            'LOG_PATH': '/var/log/cache-mover.log'
+        },
+        'Settings': {
+            'AUTO_UPDATE': False,
+            'THRESHOLD_PERCENTAGE': 70,
+            'TARGET_PERCENTAGE': 25,
+            'MAX_WORKERS': 8,
+            'MAX_LOG_SIZE_MB': 100,
+            'BACKUP_COUNT': 1,
+            'UPDATE_BRANCH': 'main',
+            'EXCLUDED_DIRS': []
+        }
+    }
+
     script_dir = get_script_dir()
     config_path = os.path.join(script_dir, 'config.yml')
-    with open(config_path, 'r') as config_file:
-        config = yaml.safe_load(config_file)
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as config_file:
+            file_config = yaml.safe_load(config_file)
+            default_config['Paths'].update(file_config.get('Paths', {}))
+            default_config['Settings'].update(file_config.get('Settings', {}))
 
-    config['Settings']['THRESHOLD_PERCENTAGE'] = float(config['Settings']['THRESHOLD_PERCENTAGE'])
-    config['Settings']['TARGET_PERCENTAGE'] = float(config['Settings']['TARGET_PERCENTAGE'])
-    config['Settings']['MAX_WORKERS'] = int(config['Settings']['MAX_WORKERS'])
-    config['Settings']['MAX_LOG_SIZE_MB'] = int(config['Settings']['MAX_LOG_SIZE_MB'])
-    config['Settings']['BACKUP_COUNT'] = int(config['Settings']['BACKUP_COUNT'])
-    config['Settings']['AUTO_UPDATE'] = config['Settings'].get('AUTO_UPDATE', True)
-    config['Settings']['UPDATE_BRANCH'] = config['Settings'].get('UPDATE_BRANCH', 'main')
-    config['Settings']['EXCLUDED_DIRS'] = config['Settings'].get('EXCLUDED_DIRS', [])
+    env_mappings = {
+        'CACHE_PATH': ('Paths', 'CACHE_PATH'),
+        'BACKING_PATH': ('Paths', 'BACKING_PATH'),
+        'LOG_PATH': ('Paths', 'LOG_PATH'),
+        'THRESHOLD_PERCENTAGE': ('Settings', 'THRESHOLD_PERCENTAGE', float),
+        'TARGET_PERCENTAGE': ('Settings', 'TARGET_PERCENTAGE', float),
+        'MAX_WORKERS': ('Settings', 'MAX_WORKERS', int),
+        'MAX_LOG_SIZE_MB': ('Settings', 'MAX_LOG_SIZE_MB', int),
+        'BACKUP_COUNT': ('Settings', 'BACKUP_COUNT', int),
+        'UPDATE_BRANCH': ('Settings', 'UPDATE_BRANCH', str),
+        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: x.split(',') if x else [])
+    }
 
-    if config['Settings']['THRESHOLD_PERCENTAGE'] <= config['Settings']['TARGET_PERCENTAGE']:
+    for env_var, (section, key, *convert) in env_mappings.items():
+        env_value = os.environ.get(env_var)
+        if env_value is not None:
+            if convert:
+                env_value = convert[0](env_value)
+            default_config[section][key] = env_value
+
+    required_paths = ['CACHE_PATH', 'BACKING_PATH']
+    missing_paths = [path for path in required_paths 
+                    if not default_config['Paths'].get(path)]
+    
+    if missing_paths:
+        raise ValueError(f"Required paths not configured: {', '.join(missing_paths)}. "
+                        f"Please set via config.yml or environment variables.")
+
+    if os.environ.get('DOCKER_CONTAINER'):
+        default_config['Settings']['AUTO_UPDATE'] = False
+
+    if default_config['Settings']['THRESHOLD_PERCENTAGE'] <= default_config['Settings']['TARGET_PERCENTAGE']:
         raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE")
-    return config
+
+    return default_config
 
 def is_script_running():
     current_process = psutil.Process()

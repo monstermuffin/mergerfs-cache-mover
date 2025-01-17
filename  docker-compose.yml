@@ -1,0 +1,36 @@
+# Method 1: Using environment variables
+services:
+  cache-mover:
+    image: ghcr.io/monstermuffin/mergerfs-cache-mover:latest
+    container_name: mergerfs-cache-mover
+    environment:
+      # Required paths
+      - CACHE_PATH=/mnt/cache-disks/cache01
+      - BACKING_PATH=/mnt/media-cold
+      # Optional settings with their default values
+      - THRESHOLD_PERCENTAGE=70
+      - TARGET_PERCENTAGE=25
+      - MAX_WORKERS=8
+      - MAX_LOG_SIZE_MB=100
+      - BACKUP_COUNT=5
+      - EXCLUDED_DIRS=temp,downloads,cache
+    volumes:
+      - /mnt/cache-disks:/mnt/cache-disks:rw
+      - /mnt/media-cold:/mnt/media-cold:rw
+      - ./logs:/var/log:rw  # Optional: Mount for persistent logs
+    privileged: true
+    restart: unless-stopped
+
+services:
+  cache-mover:
+    image: ghcr.io/monstermuffin/mergerfs-cache-mover:latest
+    container_name: mergerfs-cache-mover
+    volumes:
+      # Mount your config file (must contain at least CACHE_PATH and BACKING_PATH)
+      - ./config.yml:/app/config.yml:ro
+      # Required mounts matching your config paths
+      - /mnt/cache-disks:/mnt/cache-disks:rw
+      - /mnt/media-cold:/mnt/media-cold:rw
+      - ./logs:/var/log:rw  # Optional: Mount for persistent logs
+    privileged: true
+    restart: unless-stopped
