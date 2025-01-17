@@ -119,8 +119,7 @@ def load_config():
     HARDCODED_EXCLUSIONS = [
         'snapraid',
         '.snapraid',
-        '.content',
-        '.parity'
+        '.content'
     ]
 
     default_config = {
@@ -242,11 +241,22 @@ def get_fs_free_space(path):
     return free
 
 def is_excluded(path, excluded_dirs):
-    return any(excluded_dir in path for excluded_dir in excluded_dirs)
+    path_lower = path.lower()
+    filename = os.path.basename(path_lower)
+    
+    # check file patterns for content files
+    if filename.endswith('.content'):
+        return True
+    
+    # check dir patterns for snapraid
+    path_parts = path_lower.split(os.sep)
+    return any(excluded.lower() in path_parts for excluded in excluded_dirs)
 
 def gather_files_to_move(config):
     all_files = []
     excluded_dirs = config['Settings']['EXCLUDED_DIRS']
+    
+    logging.info(f"Exclusion patterns active: {', '.join(excluded_dirs)}")
     
     for dirname, subdirs, filenames in os.walk(config['Paths']['CACHE_PATH']):
         subdirs[:] = [d for d in subdirs if not is_excluded(os.path.join(dirname, d), excluded_dirs)]
