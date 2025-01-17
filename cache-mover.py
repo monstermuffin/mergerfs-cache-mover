@@ -115,6 +115,14 @@ def auto_update(config):
         return False
 
 def load_config():
+    # Hardcode snapraid-related exclusions because reasons
+    HARDCODED_EXCLUSIONS = [
+        'snapraid',
+        '.snapraid',
+        '.content',
+        '.parity'
+    ]
+
     default_config = {
         'Paths': {
             'LOG_PATH': '/var/log/cache-mover.log'
@@ -127,7 +135,7 @@ def load_config():
             'MAX_LOG_SIZE_MB': 100,
             'BACKUP_COUNT': 1,
             'UPDATE_BRANCH': 'main',
-            'EXCLUDED_DIRS': [],
+            'EXCLUDED_DIRS': HARDCODED_EXCLUSIONS,
             'SCHEDULE': '0 3 * * *'
         }
     }
@@ -138,7 +146,13 @@ def load_config():
         with open(config_path, 'r') as config_file:
             file_config = yaml.safe_load(config_file)
             default_config['Paths'].update(file_config.get('Paths', {}))
-            default_config['Settings'].update(file_config.get('Settings', {}))
+            
+            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS', [])
+            combined_exclusions = list(set(HARDCODED_EXCLUSIONS + user_exclusions)) # merge exclusions
+            
+            settings_update = file_config.get('Settings', {})
+            settings_update['EXCLUDED_DIRS'] = combined_exclusions
+            default_config['Settings'].update(settings_update)
 
     env_mappings = {
         'CACHE_PATH': ('Paths', 'CACHE_PATH'),
@@ -150,7 +164,7 @@ def load_config():
         'MAX_LOG_SIZE_MB': ('Settings', 'MAX_LOG_SIZE_MB', int),
         'BACKUP_COUNT': ('Settings', 'BACKUP_COUNT', int),
         'UPDATE_BRANCH': ('Settings', 'UPDATE_BRANCH', str),
-        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: x.split(',') if x else []),
+        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: list(set(HARDCODED_EXCLUSIONS + (x.split(',') if x else [])))), # this should work?
         'SCHEDULE': ('Settings', 'SCHEDULE', str)
     }
 
