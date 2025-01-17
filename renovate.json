@@ -7,12 +7,12 @@
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
-      "matchBranches": ["main"],
+      "baseBranches": ["main"],
       "automerge": false
     },
     {
       "matchUpdateTypes": ["major"],
-      "matchBranches": ["dev"],
+      "baseBranches": ["dev"],
       "automerge": true
     },
     {
@@ -26,7 +26,10 @@
       "stabilityDays": 3
     },
     {
-      "matchSecurityAdvisories": ["CRITICAL", "HIGH", "MODERATE"],
+      "matchUpdateTypes": ["patch", "minor", "major"],
+      "matchManagers": ["pip-requirements", "dockerfile", "docker-compose", "github-actions"],
+      "labels": ["security"],
+      "matchVulnerabilityAlerts": true,
       "automerge": true,
       "stabilityDays": 0
     }
