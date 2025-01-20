@@ -15,6 +15,9 @@ services:
       - MAX_LOG_SIZE_MB=100
       - BACKUP_COUNT=5
       - EXCLUDED_DIRS=temp,downloads,cache
+      - NOTIFICATIONS_ENABLED=true
+      - NOTIFY_THRESHOLD=true
+      - NOTIFICATION_URLS=discord://webhook_id/webhook_token,slack://hooks/tokenA/tokenB/tokenC
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw

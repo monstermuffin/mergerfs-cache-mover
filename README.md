@@ -1,6 +1,6 @@
 # mergerfs-cache-mover
 
-# 🎉 v1.0 released with Docker support! 🎉
+# 🎉 v1.0 released with Docker support! - v1.1 released with Apprise support! 🎉
 
 Python script for moving files on a cached disk to a backing mergerFS disk pool.
 
@@ -166,6 +166,95 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - File Permissions: Running as root ensures the script can read from and write to all directories, preserving original file permissions and ownership.
 - Directory Creation: Root access is required to create directories with the correct permissions in the destination path.
 
+## Notifications
+As of v1.1 support for various notification methods through was added via the Apprise library. This includes detailed notifications for script completion, threshold alerts, and error states.
+
+### Configuration
+Notifications can be enabled through your `config.yml` or environment variables:
+
+```yaml
+Settings:
+  NOTIFICATIONS_ENABLED: true
+  NOTIFICATION_URLS:
+    - 'discord://webhook_id/webhook_token'
+    - 'slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+  NOTIFY_THRESHOLD: true  # Whether to notify when threshold is not met
+```
+
+Or via Docker environment variables:
+
+```yaml
+environment:
+  - NOTIFICATIONS_ENABLED=true
+  - NOTIFICATION_URLS=discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+  - NOTIFY_THRESHOLD=true
+```
+
+### Supported Services
+Currently, the script provides rich formatting support for:
+- **Discord**: Full embed support with detailed statistics
+- **Slack**: Rich message formatting with detailed statistics
+
+And basic support for:
+- **Other Services**: Basic notification support through Apprise
+
+To see how to configure your service, please see the [Approise docs.](https://github.com/caronc/apprise#productivity-based-notifications)
+
+> [!NOTE]
+> I have not tested anything but Discord/Slack webhooks at the time of writing. If you would like rich formatting for a specific service, feel free to raise an issue or PR.
+
+### Threshold Notification
+`NOTIFY_THRESHOLD` enables sending a notification when a run was started, but no action was taken due to `THRESHOLD_PERCENTAGE` not being reached. If this is not defined it is defaulted to `false`.
+
+### Notification Types
+
+1. **Completion Notification**
+   - Sent when files are successfully moved
+   - Includes:
+     - Number of files processed
+     - Total data moved
+     - Operation duration
+     - Transfer speed
+     - Cache and backing storage status
+
+2. **Threshold Not Met**
+   - Sent when cache usage is below threshold
+   - Includes:
+     - Current cache usage
+     - Threshold percentage
+     - Cache and backing storage status
+
+3. **Error Notification**
+   - Sent when script encounters errors
+   - Includes detailed error messages
+
+### Service-Specific Setup
+
+#### Slack
+For Slack notifications, you'll need to create an incoming webhook. Use the full webhook URL:
+
+```yaml
+NOTIFICATION_URLS:
+  - 'https://hooks.slack.com/services/T1234/B5678/abcdef123456'
+```
+
+> [!NOTE]  
+> For Slack, format the webhook as in the `config.example.yml`.
+
+#### Discord
+For Discord notifications, use your webhook URL in this format:
+
+```yaml
+NOTIFICATION_URLS:
+  - 'discord://webhook_id/webhook_token'
+```
+
+> [!NOTE]  
+> Get your webhook URL from Discord Channel Settings → Integrations → Webhooks.
+
+### Additional Services
+For additional notification services and their configuration, refer to the [Apprise Documentation](https://github.com/caronc/apprise#productivity-based-notifications).
+
 ## Usage
 To run the script manually, use the following command from your terminal:
 
@@ -265,6 +354,9 @@ I have now included an auto-update feature. At runtime, the script checks for up
 Note: The auto-update feature is only available in versions after commit [b140b0c](https://github.com/monstermuffin/mergerfs-cache-mover/tree/b140b0c10cdc48506c96e2e23a1b8a2bef82109d). Any version before this commit will not have this feature.
 
 ## Change log
+
+### v1.1
+  - Apprise support added.
 
 ### v1.0
   - Added Docker support with scheduling and process management.

@@ -1,3 +1,4 @@
-PyYAML==6.0.2,
-psutil==6.1.1,
+PyYAML==6.0.2
+psutil==6.1.1
 requests==2.32.3
+apprise==1.9.2
