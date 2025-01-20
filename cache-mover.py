@@ -151,7 +151,7 @@ def load_config():
             file_config = yaml.safe_load(config_file)
             default_config['Paths'].update(file_config.get('Paths', {}))
             
-            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS', [])
+            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS') or []
             combined_exclusions = list(set(HARDCODED_EXCLUSIONS + user_exclusions))  # merge exclusions
             
             settings_update = file_config.get('Settings', {})
