@@ -37,19 +37,19 @@ services:
     container_name: mergerfs-cache-mover
     environment:
       # Required paths
-      - CACHE_PATH=/mnt/cache-disks/cache01
-      - BACKING_PATH=/mnt/media-cold
+      CACHE_PATH: /mnt/cache-disks/cache01
+      BACKING_PATH: /mnt/media-cold
       # Optional settings with their default values
-      - SCHEDULE=0 3 * * *  # Run at 3 AM daily
-      - THRESHOLD_PERCENTAGE=70
-      - TARGET_PERCENTAGE=25
-      - MAX_WORKERS=8
-      - MAX_LOG_SIZE_MB=100
-      - BACKUP_COUNT=5
-      - EXCLUDED_DIRS=temp,downloads,cache
-      - NOTIFICATIONS_ENABLED=true
-      - NOTIFICATION_URLS=discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
-      - NOTIFY_THRESHOLD=true
+      SCHEDULE: "0 3 * * *"  # Run at 3 AM daily
+      THRESHOLD_PERCENTAGE: "70"
+      TARGET_PERCENTAGE: "25"
+      MAX_WORKERS: "8"
+      MAX_LOG_SIZE_MB: "100"
+      BACKUP_COUNT: "5"
+      EXCLUDED_DIRS: temp,downloads,cache
+      NOTIFICATIONS_ENABLED: "true"
+      NOTIFICATION_URLS: discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+      NOTIFY_THRESHOLD: "true"
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
@@ -193,9 +193,9 @@ Or via Docker environment variables:
 
 ```yaml
 environment:
-  - NOTIFICATIONS_ENABLED=true
-  - NOTIFICATION_URLS=discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
-  - NOTIFY_THRESHOLD=true
+  - NOTIFICATIONS_ENABLED: true
+  - NOTIFICATION_URLS: discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK  
+  - NOTIFY_THRESHOLD: "true"
 ```
 
 ### Supported Services
