@@ -8,3 +8,4 @@ images/
 .vscode/
 docker-compose.yml
 .dockerignore
+CHANGELOG.md
