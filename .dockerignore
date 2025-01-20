@@ -1,0 +1,10 @@
+config.example.yml
+README.md
+LICENSE
+images/
+.git
+.gitignore
+.github/
+.vscode/
+docker-compose.yml
+.dockerignore
