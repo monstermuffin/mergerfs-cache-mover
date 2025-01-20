@@ -47,6 +47,9 @@ services:
       - MAX_LOG_SIZE_MB=100
       - BACKUP_COUNT=5
       - EXCLUDED_DIRS=temp,downloads,cache
+      - NOTIFICATIONS_ENABLED=true
+      - NOTIFICATION_URLS=discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+      - NOTIFY_THRESHOLD=true
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
@@ -73,6 +76,9 @@ All configuration options can be set via environment variables:
 - `MAX_LOG_SIZE_MB`: Maximum log file size (default: 100)
 - `BACKUP_COUNT`: Number of log backups to keep (default: 5)
 - `EXCLUDED_DIRS`: Comma-separated list of directories to exclude
+- `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
+- `NOTIFICATION_URLS`: Apprise notification URLs
+- `NOTIFY_THRESHOLD`: Notify on no action (default false)
 
 ### Using Config File
 You can optionally mount your `config.yml` into the container as so:
@@ -158,7 +164,9 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `MAX_WORKERS`: The maximum number of parallel file-moving operations.
 - `MAX_LOG_SIZE_MB`: The maximum size for the log file before it's rotated.
 - `BACKUP_COUNT`: The number of backup log files to maintain.
-
+- `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
+- `NOTIFICATION_URLS`: Apprise notification URLs
+- `NOTIFY_THRESHOLD`: Notify on no action (default false)
 
 > [!WARNING]  
 > This script must be run as root (using sudo) for the following reasons:
