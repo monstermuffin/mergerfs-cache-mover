@@ -4,7 +4,7 @@
 
 Python script for moving files on a cached disk to a backing mergerFS disk pool.
 
-This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/) 
+This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/)
 
 ## How It Works
 The script operates by checking the disk usage of the defined 'cache' directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are cleaned up after this operation.
@@ -211,8 +211,12 @@ To see how to configure your service, please see the [Approise docs.](https://gi
 > [!NOTE]
 > I have not tested anything but Discord/Slack webhooks at the time of writing. If you would like rich formatting for a specific service, feel free to raise an issue or PR.
 
+![](images/1.png)
+
 ### Threshold Notification
 `NOTIFY_THRESHOLD` enables sending a notification when a run was started, but no action was taken due to `THRESHOLD_PERCENTAGE` not being reached. If this is not defined it is defaulted to `false`.
+
+![](images/2.png)
 
 ### Notification Types
 
