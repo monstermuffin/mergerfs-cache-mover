@@ -13,6 +13,11 @@ Settings:
   MAX_LOG_SIZE_MB: 100 #The maximum size for the log file before it's rotated.
   BACKUP_COUNT: 5 #The number of backup log files to maintain.
   SCHEDULE: "0 3 * * *" #Cron schedule expression (Docker only - ignored when using systemd/cron)
-  
+  NOTIFICATIONS_ENABLED: false           #apprise notifs
+  NOTIFY_THRESHOLD: true                 #notify on thrreshold not reached
+  NOTIFICATION_URLS:                     #urls https://github.com/caronc/apprise#productivity-based-notifications
+    - 'discord://webhook_id/webhook_token'
+    - 'slack://hooks/tokenA/tokenB/tokenC'
+
   EXCLUDED_DIRS: #Dirs to exclude.
     - snapraid

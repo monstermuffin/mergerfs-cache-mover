@@ -2,3 +2,4 @@ config.yml
 *.cpython*
 *.DS_STORE*
 .vscode/ltex*
+notifications_old.py

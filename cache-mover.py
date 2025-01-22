@@ -12,8 +12,10 @@ import psutil
 import requests
 from threading import Lock, Event
 import signal
+from time import time
+from notifications import NotificationHandler
 
-__version__ = "1.0"
+__version__ = "1.1"
 
 class HybridFormatter(logging.Formatter):
     def __init__(self, fmt="%(levelname)s: %(message)s"):
@@ -135,7 +137,10 @@ def load_config():
             'BACKUP_COUNT': 1,
             'UPDATE_BRANCH': 'main',
             'EXCLUDED_DIRS': HARDCODED_EXCLUSIONS,
-            'SCHEDULE': '0 3 * * *'
+            'SCHEDULE': '0 3 * * *',
+            'NOTIFICATIONS_ENABLED': False,  
+            'NOTIFICATION_URLS': [],
+            'NOTIFY_THRESHOLD': False
         }
     }
 
@@ -146,8 +151,8 @@ def load_config():
             file_config = yaml.safe_load(config_file)
             default_config['Paths'].update(file_config.get('Paths', {}))
             
-            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS', [])
-            combined_exclusions = list(set(HARDCODED_EXCLUSIONS + user_exclusions)) # merge exclusions
+            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS') or []
+            combined_exclusions = list(set(HARDCODED_EXCLUSIONS + user_exclusions))  # merge exclusions
             
             settings_update = file_config.get('Settings', {})
             settings_update['EXCLUDED_DIRS'] = combined_exclusions
@@ -163,8 +168,11 @@ def load_config():
         'MAX_LOG_SIZE_MB': ('Settings', 'MAX_LOG_SIZE_MB', int),
         'BACKUP_COUNT': ('Settings', 'BACKUP_COUNT', int),
         'UPDATE_BRANCH': ('Settings', 'UPDATE_BRANCH', str),
-        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: list(set(HARDCODED_EXCLUSIONS + (x.split(',') if x else [])))), # this should work?
-        'SCHEDULE': ('Settings', 'SCHEDULE', str)
+        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: list(set(HARDCODED_EXCLUSIONS + (x.split(',') if x else [])))),
+        'SCHEDULE': ('Settings', 'SCHEDULE', str),
+        'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', lambda x: x.lower() == 'true'),
+        'NOTIFICATION_URLS': ('Settings', 'NOTIFICATION_URLS', lambda x: x.split(',')),
+        'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: x.lower() == 'false')
     }
 
     for env_var, (section, key, *convert) in env_mappings.items():
@@ -184,6 +192,8 @@ def load_config():
 
     if os.environ.get('DOCKER_CONTAINER'):
         default_config['Settings']['AUTO_UPDATE'] = False
+        default_config['Settings']['MAX_LOG_SIZE_MB'] = 100
+        default_config['Settings']['BACKUP_COUNT'] = 1
 
     threshold = default_config['Settings']['THRESHOLD_PERCENTAGE']
     target = default_config['Settings']['TARGET_PERCENTAGE']
@@ -246,6 +256,13 @@ def get_fs_usage(path):
 def get_fs_free_space(path):
     total, _, free = shutil.disk_usage(path)
     return free
+
+def _format_bytes(bytes: int) -> str:
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes < 1024:
+            return f"{bytes:.2f}{unit}"
+        bytes /= 1024
+    return f"{bytes:.2f}PB"
 
 def is_excluded(path, excluded_dirs):
     path_lower = path.lower()
@@ -341,8 +358,9 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
 def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=None):
     target_reached_lock = Lock()
     files_moved_count = 0
-    total_size = sum(os.path.getsize(f) for f in files_to_move)
-    
+    total_bytes = sum(os.path.getsize(f) for f in files_to_move)
+    start_time = time()
+
     with ThreadPoolExecutor(max_workers=config['Settings']['MAX_WORKERS']) as executor:
         futures = []
         for src in files_to_move:
@@ -367,9 +385,28 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                 executor.shutdown(wait=False)
                 break
 
-    final_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
-    logging.info(f"File move {'simulation' if dry_run else 'operation'} complete. Final cache usage: {final_usage:.2f}%")
-    return files_moved_count
+    elapsed_time = time() - start_time
+    cache_total, cache_used, cache_free = shutil.disk_usage(config['Paths']['CACHE_PATH'])
+    final_cache_usage = (cache_used / cache_total) * 100
+    
+    backing_total, backing_used, backing_free = shutil.disk_usage(config['Paths']['BACKING_PATH'])
+    final_backing_usage = (backing_used / backing_total) * 100
+
+    logging.info(f"File move {'simulation' if dry_run else 'operation'} complete.")
+    logging.info(f"Cache usage: {final_cache_usage:.2f}% ({_format_bytes(cache_free)} free of {_format_bytes(cache_total)} total)")
+    logging.info(f"Backing storage usage: {final_backing_usage:.2f}% ({_format_bytes(backing_free)} free of {_format_bytes(backing_total)} total)")
+    
+    return {
+        'files_moved': files_moved_count,
+        'total_bytes': total_bytes,
+        'elapsed_time': elapsed_time,
+        'final_cache_usage': final_cache_usage,
+        'cache_free': cache_free,
+        'cache_total': cache_total,
+        'final_backing_usage': final_backing_usage,
+        'backing_free': backing_free,
+        'backing_total': backing_total
+    }
 
 def remove_empty_dirs(path, excluded_dirs, dry_run=False):
     empty_dirs_count = 0
@@ -410,6 +447,8 @@ def main():
 
     try:
         config = load_config()
+        commit_hash = get_current_commit_hash()
+        notify = NotificationHandler(config, commit_hash)
     except ValueError as e:
         print(f"Configuration error: {e}")
         sys.exit(1)
@@ -447,33 +486,78 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    if current_usage > config['Settings']['THRESHOLD_PERCENTAGE']:
-        logging.info(f"Cache usage is {current_usage:.2f}%, exceeding threshold. Starting file move...")
-        files_to_move = gather_files_to_move(config)
-        
-        if args.dry_run:
-            logging.info("Dry run mode. Simulating file moves and directory cleanup:")
-            moved_files_count = move_files_concurrently(files_to_move, config, dry_run=True, stop_event=stop_event)
-            empty_dirs_count = remove_empty_dirs(config['Paths']['CACHE_PATH'], config['Settings']['EXCLUDED_DIRS'], dry_run=True)
+    try:
+        if current_usage > config['Settings']['THRESHOLD_PERCENTAGE'] or (config['Settings']['THRESHOLD_PERCENTAGE'] == 0 and config['Settings']['TARGET_PERCENTAGE'] == 0):
+            logging.info(f"Cache usage is {current_usage:.2f}%, {'exceeding threshold' if current_usage > config['Settings']['THRESHOLD_PERCENTAGE'] else 'in empty cache mode'}. Starting file move...")
+            files_to_move = gather_files_to_move(config)
             
-            logging.info("Dry run summary:")
-            logging.info(f"- Would move {moved_files_count} files")
-            logging.info(f"- Would remove {empty_dirs_count} empty directories")
-        else:
-            logging.info("Starting actual file move operation:")
-            moved_files_count = move_files_concurrently(files_to_move, config, dry_run=False, stop_event=stop_event)
-            if moved_files_count > 0:
-                logging.info(f"Moved {moved_files_count} files. Performing cleanup of empty directories.")
-                empty_dirs_count = remove_empty_dirs(config['Paths']['CACHE_PATH'], config['Settings']['EXCLUDED_DIRS'])
-                logging.info(f"Removed {empty_dirs_count} empty directories")
+            if args.dry_run:
+                stats = move_files_concurrently(files_to_move, config, dry_run=True, stop_event=stop_event)
+                empty_dirs_count = remove_empty_dirs(config['Paths']['CACHE_PATH'], 
+                                                  config['Settings']['EXCLUDED_DIRS'], 
+                                                  dry_run=True)
+                
+                logging.info("Dry run summary:")
+                logging.info(f"- Would move {stats['files_moved']} files")
+                logging.info(f"- Would remove {empty_dirs_count} empty directories")
             else:
-                logging.info("No files were moved. Skipping directory cleanup.")
+                stats = move_files_concurrently(files_to_move, config, dry_run=False, stop_event=stop_event)
+                empty_dirs_count = 0
+                
+                if stats['files_moved'] > 0:
+                    empty_dirs_count = remove_empty_dirs(config['Paths']['CACHE_PATH'], 
+                                                      config['Settings']['EXCLUDED_DIRS'])
+                    
+                    notify.notify_completion(
+                        files_moved=stats['files_moved'],
+                        total_bytes=stats['total_bytes'],
+                        elapsed_time=stats['elapsed_time'],
+                        final_usage=stats['final_cache_usage'],
+                        cache_free=stats['cache_free'],
+                        cache_total=stats['cache_total'],
+                        backing_usage=stats['final_backing_usage'],
+                        backing_free=stats['backing_free'],
+                        backing_total=stats['backing_total']
+                    )
+                    logging.info(f"Moved {stats['files_moved']} files in {stats['elapsed_time']:.1f} seconds")
+                    logging.info(f"Average speed: {(stats['total_bytes'] / (1024**2)) / stats['elapsed_time']:.1f} MB/s")
+                    logging.info(f"Removed {empty_dirs_count} empty directories")
+                else:
+                    cache_total, cache_used, cache_free = shutil.disk_usage(config['Paths']['CACHE_PATH'])
+                    final_cache_usage = (cache_used / cache_total) * 100
+                    
+                    backing_total, backing_used, backing_free = shutil.disk_usage(config['Paths']['BACKING_PATH'])
+                    final_backing_usage = (backing_used / backing_total) * 100
+
+                    notify.notify_threshold_not_met(
+                        current_usage=current_usage,
+                        threshold=config['Settings']['THRESHOLD_PERCENTAGE'],
+                        cache_free=cache_free,
+                        cache_total=cache_total,
+                        backing_free=backing_free,
+                        backing_total=backing_total
+                    )
+                    logging.info("No files were moved. Skipping directory cleanup.")
+        else:
+            logging.info(f"Cache usage is {current_usage:.2f}%, below threshold ({config['Settings']['THRESHOLD_PERCENTAGE']}%). No action required.")
             
-            logging.info("Operation summary:")
-            logging.info(f"- Moved {moved_files_count} files")
-            logging.info(f"- Removed {empty_dirs_count} empty directories")
-    else:
-        logging.info(f"Cache usage is {current_usage:.2f}%, below the threshold ({config['Settings']['THRESHOLD_PERCENTAGE']}%). No action required.")
+            # Get disk stats for the notification
+            cache_total, cache_used, cache_free = shutil.disk_usage(config['Paths']['CACHE_PATH'])
+            backing_total, backing_used, backing_free = shutil.disk_usage(config['Paths']['BACKING_PATH'])
+            
+            notify.notify_threshold_not_met(
+                current_usage=current_usage,
+                threshold=config['Settings']['THRESHOLD_PERCENTAGE'],
+                cache_free=cache_free,
+                cache_total=cache_total,
+                backing_free=backing_free,
+                backing_total=backing_total
+            )
+
+    except Exception as e:
+        notify.notify_error(str(e))
+        logging.error(f"Error during execution: {e}")
+        raise
 
     if stop_event.is_set():
         logging.info("Script execution interrupted. Some operations may not have completed.")
