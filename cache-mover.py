@@ -192,6 +192,8 @@ def load_config():
 
     if os.environ.get('DOCKER_CONTAINER'):
         default_config['Settings']['AUTO_UPDATE'] = False
+        default_config['Settings']['MAX_LOG_SIZE_MB'] = 100
+        default_config['Settings']['BACKUP_COUNT'] = 1
 
     threshold = default_config['Settings']['THRESHOLD_PERCENTAGE']
     target = default_config['Settings']['TARGET_PERCENTAGE']

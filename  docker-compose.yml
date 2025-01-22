@@ -12,8 +12,6 @@ services:
       - THRESHOLD_PERCENTAGE=70
       - TARGET_PERCENTAGE=25
       - MAX_WORKERS=8
-      - MAX_LOG_SIZE_MB=100
-      - BACKUP_COUNT=5
       - EXCLUDED_DIRS=temp,downloads,cache
       - NOTIFICATIONS_ENABLED=true
       - NOTIFY_THRESHOLD=true
@@ -21,7 +19,7 @@ services:
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
-      - ./logs:/var/log:rw  # Optional: Mount for persistent logs
+      - /var/log/cache-mover.log:/var/log/cache-mover.log:rw  # Optional: Mount for persistent logs
     privileged: true
     restart: unless-stopped
 
@@ -36,6 +34,6 @@ services:
       # Required mounts matching your config paths
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
-      - ./logs:/var/log:rw  # Optional: Mount for persistent logs
+      - /var/log/cache-mover.log:/var/log/cache-mover.log:rw  # Optional: Mount for persistent logs
     privileged: true
     restart: unless-stopped

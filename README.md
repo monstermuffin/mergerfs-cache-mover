@@ -44,8 +44,6 @@ services:
       THRESHOLD_PERCENTAGE: "70"
       TARGET_PERCENTAGE: "25"
       MAX_WORKERS: "8"
-      MAX_LOG_SIZE_MB: "100"
-      BACKUP_COUNT: "5"
       EXCLUDED_DIRS: temp,downloads,cache
       NOTIFICATIONS_ENABLED: "true"
       NOTIFICATION_URLS: discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
@@ -73,8 +71,6 @@ All configuration options can be set via environment variables:
 - `THRESHOLD_PERCENTAGE`: Usage percentage that triggers moves (default: 70)
 - `TARGET_PERCENTAGE`: Target usage percentage (default: 25)
 - `MAX_WORKERS`: Maximum parallel file moves (default: 8)
-- `MAX_LOG_SIZE_MB`: Maximum log file size (default: 100)
-- `BACKUP_COUNT`: Number of log backups to keep (default: 5)
 - `EXCLUDED_DIRS`: Comma-separated list of directories to exclude
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
@@ -120,10 +116,20 @@ docker exec mergerfs-cache-mover python cache-mover.py --console-log
 
 4. **Auto-Update**: Auto-update is disabled by default in Docker to maintain container immutability. Use container image updates instead with something like [Watchtower](https://github.com/containrrr/watchtower) or [Duin](https://github.com/crazy-max/diun).
 
-5. **Logging**: Container logs can be viewed with:
-   ```bash
-   docker logs mergerfs-cache-mover
-   ```
+### Logging in Docker
+When running in Docker, logs are written to a file on the host system via a bind mount. The log file is capped at 100MB and will be truncated when it exceeds this size.
+
+By default, logs are written to `/var/log/cache-mover.log`. You can change this by modifying the volume mount in your `docker-compose.yml`:
+
+```yaml
+volumes:
+  - /var/log/cache-mover.log:/var/log/cache-mover.log:rw
+```
+
+You can also view the logs with the usual: 
+```bash
+docker logs mergerfs-cache-mover
+```
 
 ### Troubleshooting
 1. **Permission Issues**
