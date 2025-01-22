@@ -172,8 +172,8 @@ def load_config():
         'SCHEDULE': ('Settings', 'SCHEDULE', str),
         'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', lambda x: x.lower() == 'true'),
         'NOTIFICATION_URLS': ('Settings', 'NOTIFICATION_URLS', lambda x: x.split(',')),
-        'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: x.lower() == 'false')
-    }
+        'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x is not None else False), # ??? I don't think this is working as I think?
+}
 
     for env_var, (section, key, *convert) in env_mappings.items():
         env_value = os.environ.get(env_var)
@@ -490,6 +490,22 @@ def main():
         if current_usage > config['Settings']['THRESHOLD_PERCENTAGE'] or (config['Settings']['THRESHOLD_PERCENTAGE'] == 0 and config['Settings']['TARGET_PERCENTAGE'] == 0):
             logging.info(f"Cache usage is {current_usage:.2f}%, {'exceeding threshold' if current_usage > config['Settings']['THRESHOLD_PERCENTAGE'] else 'in empty cache mode'}. Starting file move...")
             files_to_move = gather_files_to_move(config)
+
+            if config['Settings']['THRESHOLD_PERCENTAGE'] == 0 and \
+            config['Settings']['TARGET_PERCENTAGE'] == 0:
+                
+                if not files_to_move:
+                    cache_total, _, cache_free = shutil.disk_usage(config['Paths']['CACHE_PATH'])
+                    backing_total, _, backing_free = shutil.disk_usage(config['Paths']['BACKING_PATH'])
+                    
+                    logging.info("Cache is already empty - nothing to move")
+                    notify.notify_empty_cache(
+                        cache_free=cache_free,
+                        cache_total=cache_total,
+                        backing_free=backing_free,
+                        backing_total=backing_total
+                    )
+                    return
             
             if args.dry_run:
                 stats = move_files_concurrently(files_to_move, config, dry_run=True, stop_event=stop_event)

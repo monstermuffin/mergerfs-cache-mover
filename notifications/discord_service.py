@@ -110,6 +110,26 @@ class DiscordService:
         }]
         
         return self._send_webhook({"embeds": embeds})
+    
+    def send_empty_cache(self, cache_free: int, cache_total: int,
+                    backing_free: int, backing_total: int,
+                    commit_hash: str = None) -> bool:
+        embeds = [{
+            "title": "ℹ️ Cache Empty Report",
+            "color": 0x3498db,
+            "description": (
+                "Empty cache mode activated but no files found!\n\n"
+                f"💽 Cache Status\n"
+                f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
+                f"\n💾 Backing Status\n"
+                f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total"
+            ),
+            "footer": {
+                "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }]
+        return self._send_webhook({"embeds": embeds})
 
     def _send_webhook(self, payload: Dict[str, Any]) -> bool:
         try:

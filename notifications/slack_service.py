@@ -133,6 +133,41 @@ class SlackService:
             })
 
         return self._send_webhook({"blocks": blocks})
+    
+    def send_empty_cache(self, cache_free: int, cache_total: int,
+                    backing_free: int, backing_total: int,
+                    commit_hash: str = None) -> bool:
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*ℹ️ Cache Empty Report*"
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        "Empty cache mode activated but no files found!\n\n"
+                        f"💽 Cache Status\n"
+                        f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
+                        f"\n💾 Backing Status\n"
+                        f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total"
+                    )
+                }
+            }
+        ]
+        if commit_hash:
+            blocks.append({
+                "type": "context",
+                "elements": [{
+                    "type": "mrkdwn",
+                    "text": f"Version: {commit_hash[:7]}"
+                }]
+            })
+        return self._send_webhook({"blocks": blocks})
 
     def _send_webhook(self, payload: Dict[str, Any]) -> bool:
         try:

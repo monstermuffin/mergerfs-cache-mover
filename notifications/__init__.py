@@ -222,3 +222,48 @@ class NotificationHandler:
                 success = False
                 
         return success
+    
+    def notify_empty_cache(self, cache_free: int, cache_total: int,
+                        backing_free: int, backing_total: int) -> bool:
+        if not self.config.enabled:
+            return False
+
+        success = True
+        message = (
+            "ℹ️ Cache Empty Report\n\n"
+            "Empty cache mode activated but no files found!\n\n"
+            f"💽 Cache Status\n"
+            f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
+            f"\n💾 Backing Status\n"
+            f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total"
+        )
+
+        for service in self.discord_services:
+            if not service.send_empty_cache(
+                cache_free, cache_total,
+                backing_free, backing_total,
+                self.config.commit_hash
+            ):
+                success = False
+
+        for service in self.slack_services:
+            if not service.send_empty_cache(
+                cache_free, cache_total,
+                backing_free, backing_total,
+                self.config.commit_hash
+            ):
+                success = False
+
+        # Send via Apprise
+        if self.apobj:
+            try:
+                self.apobj.notify(
+                    title="Cache Empty Report",
+                    body=message,
+                    body_format=apprise.NotifyFormat.MARKDOWN
+                )
+            except Exception as e:
+                logging.error(f"Empty cache notification failed: {str(e)}")
+                success = False
+
+        return success
