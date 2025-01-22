@@ -24,7 +24,8 @@ class NotificationHandler:
             enabled=settings.get('NOTIFICATIONS_ENABLED', False),
             urls=settings.get('NOTIFICATION_URLS', []),
             commit_hash=commit_hash,
-            backing_path=config.get('Paths', {}).get('BACKING_PATH')
+            backing_path=config.get('Paths', {}).get('BACKING_PATH'),
+            notify_threshold=settings.get('NOTIFY_THRESHOLD', False)
         )
         
         self.apobj = None
