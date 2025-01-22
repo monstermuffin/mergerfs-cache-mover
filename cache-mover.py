@@ -31,10 +31,7 @@ class HybridFormatter(logging.Formatter):
             return f"{self.formatTime(record)} - {record.levelname} - {record.msg}"
 
 def setup_logging(config, console_log):
-    log_formatter = HybridFormatter()    
-    logger = logging.getLogger()
-    logger.handlers = []
-    
+    log_formatter = HybridFormatter()
     log_handler = RotatingFileHandler(
         config['Paths']['LOG_PATH'],
         maxBytes=config['Settings']['MAX_LOG_SIZE_MB'] * 1024 * 1024,
@@ -42,6 +39,7 @@ def setup_logging(config, console_log):
     )
     log_handler.setFormatter(log_formatter)
     
+    logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.addHandler(log_handler)
 
@@ -145,7 +143,7 @@ def load_config():
             'NOTIFY_THRESHOLD': False
         }
     }
-    
+
     script_dir = get_script_dir()
     config_path = os.path.join(script_dir, 'config.yml')
     if os.path.exists(config_path):
@@ -174,9 +172,9 @@ def load_config():
         'SCHEDULE': ('Settings', 'SCHEDULE', str),
         'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', lambda x: x.lower() == 'true'),
         'NOTIFICATION_URLS': ('Settings', 'NOTIFICATION_URLS', lambda x: x.split(',')),
-        'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x else None)
+        'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x is not None else False), # ??? I don't think this is working as I think?
 }
-    
+
     for env_var, (section, key, *convert) in env_mappings.items():
         env_value = os.environ.get(env_var)
         if env_value is not None:
