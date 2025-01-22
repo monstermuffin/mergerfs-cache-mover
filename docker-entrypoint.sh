@@ -15,13 +15,14 @@ except:
 
 SCHEDULE=${SCHEDULE:-$SCHEDULE_FROM_CONFIG}
 
-echo "$SCHEDULE /usr/local/bin/python /app/cache-mover.py --console-log" > /etc/cron.d/cache-mover
+printenv | grep -v "no_proxy" > /etc/environment
+
+echo "$SCHEDULE BASH_ENV=/etc/environment /usr/local/bin/python /app/cache-mover.py --console-log >> /proc/1/fd/1 2>&1" > /etc/cron.d/cache-mover
+echo "" >> /etc/cron.d/cache-mover
 chmod 0644 /etc/cron.d/cache-mover
 
-apt-get update && apt-get install -y cron
-
-cron
+crontab /etc/cron.d/cache-mover
 
 run_cache_mover
-
+cron -f &
 tail -f /var/log/cache-mover.log
