@@ -5,21 +5,21 @@ services:
     container_name: mergerfs-cache-mover
     environment:
       # Required paths
-      - CACHE_PATH=/mnt/cache-disks/cache01
-      - BACKING_PATH=/mnt/media-cold
+      CACHE_PATH: /mnt/cache-disks/cache01
+      BACKING_PATH: /mnt/media-cold
       # Optional settings with their default values
-      - SCHEDULE=0 3 * * *  # Run at 3 AM daily
-      - THRESHOLD_PERCENTAGE=70
-      - TARGET_PERCENTAGE=25
-      - MAX_WORKERS=8
-      - EXCLUDED_DIRS=temp,downloads,cache
-      - NOTIFICATIONS_ENABLED=true
-      - NOTIFY_THRESHOLD=true
-      - NOTIFICATION_URLS=discord://webhook_id/webhook_token,slack://hooks/tokenA/tokenB/tokenC
+      SCHEDULE: '0 3 * * *' # Run at 3 AM daily
+      THRESHOLD_PERCENTAGE: 70
+      TARGET_PERCENTAGE: 25
+      MAX_WORKERS: 8
+      EXCLUDED_DIRS: temp,downloads,cache
+      NOTIFICATIONS_ENABLED: True
+      NOTIFY_THRESHOLD: True
+      NOTIFICATION_URLS: "discord://webhook_id/webhook_token,slack://hooks/tokenA/tokenB/tokenC"
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
-      - /var/log/cache-mover.log:/var/log/cache-mover.log:rw  # Optional: Mount for persistent logs
+      - /var/log:/var/log:rw
     cap_add:
       - SYS_ADMIN
       - DAC_READ_SEARCH
@@ -36,7 +36,7 @@ services:
       # Required mounts matching your config paths
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
-      - /var/log/cache-mover.log:/var/log/cache-mover.log:rw  # Optional: Mount for persistent logs
+      - /var/log:/var/log:rw
     cap_add:
       - SYS_ADMIN
       - DAC_READ_SEARCH

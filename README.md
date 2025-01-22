@@ -40,14 +40,14 @@ services:
       CACHE_PATH: /mnt/cache-disks/cache01
       BACKING_PATH: /mnt/media-cold
       # Optional settings with their default values
-      SCHEDULE: "0 3 * * *"  # Run at 3 AM daily
-      THRESHOLD_PERCENTAGE: "70"
-      TARGET_PERCENTAGE: "25"
-      MAX_WORKERS: "8"
+      SCHEDULE: '0 3 * * *'  # Run at 3 AM daily
+      THRESHOLD_PERCENTAGE: 70
+      TARGET_PERCENTAGE: 25
+      MAX_WORKERS: 8
       EXCLUDED_DIRS: temp,downloads,cache
-      NOTIFICATIONS_ENABLED: "true"
-      NOTIFICATION_URLS: discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
-      NOTIFY_THRESHOLD: "true"
+      NOTIFICATIONS_ENABLED: True
+      NOTIFY_THRESHOLD: True
+      NOTIFICATION_URLS: "discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
