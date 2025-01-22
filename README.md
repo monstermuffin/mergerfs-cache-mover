@@ -52,7 +52,9 @@ services:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
       - ./logs:/var/log:rw  # Optional: Mount for persistent logs
-    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - DAC_READ_SEARCH
     restart: unless-stopped
 ```
 
