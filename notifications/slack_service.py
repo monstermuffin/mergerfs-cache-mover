@@ -1,9 +1,8 @@
 import logging
-from datetime import datetime
 from typing import Dict, List, Any
 import requests
 
-class DiscordService:
+class SlackService:
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url
 
@@ -15,78 +14,84 @@ class DiscordService:
         return f"{bytes:.2f}PB"
 
     def send_completion(self, data: Dict[str, Any]) -> bool:
-        embeds = [{
-            "title": "🔄 Cache Move Complete",
-            "color": 0x00ff00,
-            "fields": [
-                {
-                    "name": "📊 Files Processed",
-                    "value": f"{data['files_moved']:,}",
-                    "inline": True
-                },
-                {
-                    "name": "💾 Data Moved",
-                    "value": data['space_moved'],
-                    "inline": True
-                },
-                {
-                    "name": "\u200b",
-                    "value": "\u200b",
-                    "inline": True
-                },
-                {
-                    "name": "⏱️ Time Taken",
-                    "value": data['time_str'],
-                    "inline": True
-                },
-                {
-                    "name": "📈 Transfer Speed",
-                    "value": f"{data['io_speed']:.1f} MB/s",
-                    "inline": True
-                },
-                {
-                    "name": "\u200b",
-                    "value": "\u200b",
-                    "inline": True
-                },
-                {
-                    "name": "💽 Cache Status",
-                    "value": (f"**Usage:** {data['final_cache_usage']:.1f}% Used | {100 - data['final_cache_usage']:.1f}% Free\n"
-                            f"**Space:** {data['cache_free_str']} Free of {data['cache_total_str']} Total"),
-                    "inline": False
-                },
-                {
-                    "name": "💾 Backing Status",
-                    "value": (f"**Usage:** {data['backing_usage']:.1f}% Used | {100 - data['backing_usage']:.1f}% Free\n"
-                            f"**Space:** {data['backing_free_str']} Free of {data['backing_total_str']} Total"),
-                    "inline": False
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*🔄 Cache Move Complete*"
                 }
-            ],
-            "footer": {
-                "text": f"Version: {data['commit_hash'][:7] if data['commit_hash'] else 'unknown'}"
             },
-            "timestamp": datetime.utcnow().isoformat()
-        }]
-        
-        return self._send_webhook({"embeds": embeds})
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*📊 Files Processed*\n"
+                           f"{data['files_moved']:,}\n"
+                           f"*💾 Data Moved*\n"
+                           f"{data['space_moved']}\n\n"
+                           f"*⏱️ Time Taken*\n"
+                           f"{data['time_str']}\n"
+                           f"*📈 Transfer Speed*\n"
+                           f"{data['io_speed']:.1f} MB/s\n\n"
+                           f"*💽 Cache Status*\n"
+                           f"Usage: {data['final_cache_usage']:.1f}% Used | {100 - data['final_cache_usage']:.1f}% Free\n"
+                           f"Space: {data['cache_free_str']} Free of {data['cache_total_str']} Total\n"
+                           f"*💾 Backing Status*\n"
+                           f"Usage: {data['backing_usage']:.1f}% Used | {100 - data['backing_usage']:.1f}% Free\n"
+                           f"Space: {data['backing_free_str']} Free of {data['backing_total_str']} Total"
+                }
+            }
+        ]
+
+        if data['commit_hash']:
+            blocks.append({
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Version: {data['commit_hash'][:7]}"
+                    }
+                ]
+            })
+
+        return self._send_webhook({"blocks": blocks})
 
     def send_error(self, error_msg: str, commit_hash: str = None) -> bool:
-        embeds = [{
-            "title": "❌ Cache Mover Error",
-            "color": 0xff0000,
-            "description": error_msg,
-            "footer": {
-                "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*❌ Cache Mover Error*"
+                }
             },
-            "timestamp": datetime.utcnow().isoformat()
-        }]
-        
-        return self._send_webhook({"embeds": embeds})
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Error Details:*\n{error_msg}"
+                }
+            }
+        ]
+
+        if commit_hash:
+            blocks.append({
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Version: {commit_hash[:7]}"
+                    }
+                ]
+            })
+
+        return self._send_webhook({"blocks": blocks})
 
     def send_threshold_not_met(self, current_usage: float, threshold: float, commit_hash: str = None,
                                   cache_free: int = None, cache_total: int = None,
                                   backing_free: int = None, backing_total: int = None) -> bool:
-        description = f"Current cache usage ({current_usage:.1f}%) is below threshold ({threshold:.1f}%). No action required."
+        message = f"Current cache usage ({current_usage:.1f}%) is below threshold ({threshold:.1f}%). No action required."
 
         if all(x is not None for x in [cache_free, cache_total, backing_free, backing_total]):
             cache_free_str = self._format_bytes(cache_free)
@@ -94,42 +99,75 @@ class DiscordService:
             backing_free_str = self._format_bytes(backing_free)
             backing_total_str = self._format_bytes(backing_total)
 
-            description += f"\n\n**💽 Cache Status**\n"
-            description += f"Space: {cache_free_str} Free of {cache_total_str} Total\n"
-            description += f"\n**💾 Backing Status**\n"
-            description += f"Space: {backing_free_str} Free of {backing_total_str} Total"
+            message += f"\n\n*💽 Cache Status*\n"
+            message += f"Space: {cache_free_str} Free of {cache_total_str} Total\n"
+            message += f"\n*💾 Backing Status*\n"
+            message += f"Space: {backing_free_str} Free of {backing_total_str} Total"
 
-        embeds = [{
-            "title": "ℹ️ Cache Usage Update",
-            "color": 0x3498db,
-            "description": description,
-            "footer": {
-                "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*ℹ️ Cache Usage Update*"
+                }
             },
-            "timestamp": datetime.utcnow().isoformat()
-        }]
-        
-        return self._send_webhook({"embeds": embeds})
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": message
+                }
+            }
+        ]
+
+        if commit_hash:
+            blocks.append({
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": f"Version: {commit_hash[:7]}"
+                    }
+                ]
+            })
+
+        return self._send_webhook({"blocks": blocks})
     
     def send_empty_cache(self, cache_free: int, cache_total: int,
                     backing_free: int, backing_total: int,
                     commit_hash: str = None) -> bool:
-        embeds = [{
-            "title": "ℹ️ Cache Empty Report",
-            "color": 0x3498db,
-            "description": (
-                "Empty cache mode activated but no files found!\n\n"
-                f"💽 Cache Status\n"
-                f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
-                f"\n💾 Backing Status\n"
-                f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total"
-            ),
-            "footer": {
-                "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*ℹ️ Cache Empty Report*"
+                }
             },
-            "timestamp": datetime.utcnow().isoformat()
-        }]
-        return self._send_webhook({"embeds": embeds})
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        "Empty cache mode activated but no files found!\n\n"
+                        f"💽 Cache Status\n"
+                        f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
+                        f"\n💾 Backing Status\n"
+                        f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total"
+                    )
+                }
+            }
+        ]
+        if commit_hash:
+            blocks.append({
+                "type": "context",
+                "elements": [{
+                    "type": "mrkdwn",
+                    "text": f"Version: {commit_hash[:7]}"
+                }]
+            })
+        return self._send_webhook({"blocks": blocks})
 
     def _send_webhook(self, payload: Dict[str, Any]) -> bool:
         try:
@@ -137,5 +175,5 @@ class DiscordService:
             response.raise_for_status()
             return True
         except Exception as e:
-            logging.error(f"Failed to send Discord webhook: {str(e)}")
+            logging.error(f"Failed to send Slack webhook: {str(e)}")
             return False
