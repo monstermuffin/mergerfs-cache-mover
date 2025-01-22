@@ -31,7 +31,10 @@ class HybridFormatter(logging.Formatter):
             return f"{self.formatTime(record)} - {record.levelname} - {record.msg}"
 
 def setup_logging(config, console_log):
-    log_formatter = HybridFormatter()
+    log_formatter = HybridFormatter()    
+    logger = logging.getLogger()
+    logger.handlers = []
+    
     log_handler = RotatingFileHandler(
         config['Paths']['LOG_PATH'],
         maxBytes=config['Settings']['MAX_LOG_SIZE_MB'] * 1024 * 1024,
@@ -39,7 +42,6 @@ def setup_logging(config, console_log):
     )
     log_handler.setFormatter(log_formatter)
     
-    logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.addHandler(log_handler)
 

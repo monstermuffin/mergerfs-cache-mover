@@ -19,14 +19,11 @@ class NotificationConfig:
 class NotificationHandler:
     def __init__(self, config: dict, commit_hash: Optional[str] = None):
         settings = config.get('Settings', {})
-        notify_threshold_setting = settings.get('NOTIFY_THRESHOLD')
-        logging.info(f"Raw NOTIFY_THRESHOLD setting: {notify_threshold_setting}")
 
         self.config = NotificationConfig(
             enabled=settings.get('NOTIFICATIONS_ENABLED', False),
             urls=settings.get('NOTIFICATION_URLS', []),
             commit_hash=commit_hash,
-            notify_threshold=notify_threshold_setting if notify_threshold_setting is not None else False,
             backing_path=config.get('Paths', {}).get('BACKING_PATH')
         )
         
@@ -184,7 +181,6 @@ class NotificationHandler:
     def notify_threshold_not_met(self, current_usage: float, threshold: float, 
                             cache_free: int = None, cache_total: int = None,
                             backing_free: int = None, backing_total: int = None) -> bool:
-        logging.info(f"notify_threshold_not_met called with enabled={self.config.enabled} and notify_threshold={self.config.notify_threshold}")
         if not self.config.enabled or not self.config.notify_threshold:
             return False
                 
