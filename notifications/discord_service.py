@@ -119,12 +119,3 @@ class DiscordService:
         except Exception as e:
             logging.error(f"Failed to send Discord webhook: {str(e)}")
             return False
-
-    def _send_webhook(self, payload: Dict[str, Any]) -> bool:
-        try:
-            response = requests.post(self.webhook_url, json=payload)
-            response.raise_for_status()
-            return True
-        except Exception as e:
-            logging.error(f"Failed to send Discord webhook: {str(e)}")
-            return False
