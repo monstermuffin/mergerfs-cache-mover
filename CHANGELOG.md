@@ -1,3 +1,7 @@
+### v1.2 - 2025-01-24
+  - fix: Speed calulation overhaul
+  - ci: Release workflow setup/test
+
 ### v1.1 - 2025-01-20
   - Apprise support added.
 
