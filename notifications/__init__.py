@@ -90,10 +90,11 @@ class NotificationHandler:
             return None
 
     def notify_completion(self, files_moved: int, total_bytes: int, 
-                         elapsed_time: float, final_usage: float,
-                         cache_free: int, cache_total: int,
-                         backing_usage: float, backing_free: int, 
-                         backing_total: int) -> bool:
+                        elapsed_time: float, final_usage: float,
+                        cache_free: int, cache_total: int,
+                        backing_usage: float, backing_free: int, 
+                        backing_total: int,
+                        avg_speed: float) -> bool:
         if not self.config.enabled:
             return False
             
@@ -103,7 +104,7 @@ class NotificationHandler:
             'files_moved': files_moved,
             'space_moved': self._format_bytes(total_bytes),
             'time_str': self._format_time(elapsed_time),
-            'io_speed': (total_bytes / (1024**2)) / elapsed_time if elapsed_time > 0 else 0,
+            'avg_speed': avg_speed,
             'final_cache_usage': final_usage,
             'cache_free_str': self._format_bytes(cache_free),
             'cache_total_str': self._format_bytes(cache_total),
@@ -130,7 +131,7 @@ class NotificationHandler:
                 f"**Files Moved:** {files_moved:,}\n"
                 f"**Space Moved:** {notification_data['space_moved']}\n"
                 f"**Time Taken:** {notification_data['time_str']}\n"
-                f"**Average Speed:** {notification_data['io_speed']:.1f}MB/s\n\n"
+                f"**Average Speed:** {avg_speed:.1f}MB/s\n\n"
                 f"**Cache Usage:** {final_usage:.1f}%\n"
                 f"**Backing Storage:** {backing_usage:.1f}% Used "
                 f"({notification_data['backing_free_str']} Free of {notification_data['backing_total_str']})"

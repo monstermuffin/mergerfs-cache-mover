@@ -33,7 +33,7 @@ class SlackService:
                            f"*⏱️ Time Taken*\n"
                            f"{data['time_str']}\n"
                            f"*📈 Transfer Speed*\n"
-                           f"{data['io_speed']:.1f} MB/s\n\n"
+                           f"{data['avg_speed']:.1f} MB/s\n\n"
                            f"*💽 Cache Status*\n"
                            f"Usage: {data['final_cache_usage']:.1f}% Used | {100 - data['final_cache_usage']:.1f}% Free\n"
                            f"Space: {data['cache_free_str']} Free of {data['cache_total_str']} Total\n"

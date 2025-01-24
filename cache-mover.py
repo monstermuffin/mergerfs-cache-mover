@@ -310,12 +310,12 @@ def gather_files_to_move(config):
 
 def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_event=None):
     if stop_event and stop_event.is_set():
-        return False, False
+        return {'size': 0, 'speed': 0, 'success': False}
 
     with target_reached_lock:
         current_usage = get_fs_usage(config['Paths']['CACHE_PATH'])
         if current_usage <= config['Settings']['TARGET_PERCENTAGE']:
-            return False, True
+            return {'size': 0, 'speed': 0, 'success': False, 'target_reached': True}
 
     try:
         relative_path = os.path.relpath(src, config['Paths']['CACHE_PATH'])
@@ -324,14 +324,16 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
 
         if dry_run:
             logging.info("Would move file", extra={'file_move': True, 'src': src, 'dest': dest})
-            return True, False
+            return {'size': 0, 'speed': 0, 'success': True}
 
-        free_space = get_fs_free_space(dest_base)
         file_size = os.path.getsize(src)
+        free_space = get_fs_free_space(dest_base)
         if free_space < file_size:
             logging.error(f"Not enough space to move file", extra={'file_move': True, 'src': src, 'dest': dest})
-            return False, False
+            return {'size': 0, 'speed': 0, 'success': False}
 
+        start_time = time()
+        
         os.makedirs(dest_dir, exist_ok=True)
         src_stat = os.stat(src)
         if src_stat.st_nlink > 1:
@@ -345,20 +347,36 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
             logging.warning(f"Unable to change ownership", extra={'file_move': True, 'src': src, 'dest': dest})
 
         if stop_event and stop_event.is_set():
-            return False, False
+            return {'size': 0, 'speed': 0, 'success': False}
 
         os.remove(src)
+        
+        transfer_time = time() - start_time
+        transfer_speed = file_size / (transfer_time * 1024 * 1024) if transfer_time > 0 else 0
 
-        logging.info("File moved successfully", extra={'file_move': True, 'src': src, 'dest': dest})
-        return True, False
+        logging.info("File moved successfully", extra={
+            'file_move': True, 
+            'src': src, 
+            'dest': dest,
+            'size': file_size,
+            'speed': transfer_speed
+        })
+        
+        return {
+            'size': file_size,
+            'speed': transfer_speed,
+            'success': True
+        }
     except Exception as e:
         logging.error(f"Unexpected error moving file: {str(e)}", extra={'file_move': True, 'src': src, 'dest': dest})
-        return False, False
+        return {'size': 0, 'speed': 0, 'success': False}
 
 def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=None):
     target_reached_lock = Lock()
     files_moved_count = 0
-    total_bytes = sum(os.path.getsize(f) for f in files_to_move)
+    total_bytes = 0
+    total_speed = 0
+    successful_transfers = 0
     start_time = time()
 
     with ThreadPoolExecutor(max_workers=config['Settings']['MAX_WORKERS']) as executor:
@@ -376,16 +394,23 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                 logging.info("Graceful shutdown in progress. Waiting for current moves to complete.")
                 executor.shutdown(wait=False)
                 break
-            success, reached = future.result()
-            if success:
-                files_moved_count += 1
-            if reached and not target_reached:
+            
+            result = future.result()
+            if result.get('target_reached', False) and not target_reached:
                 logging.info(f"Target percentage reached. Stopping new file moves.")
                 target_reached = True
                 executor.shutdown(wait=False)
                 break
+                
+            if result['success']:
+                files_moved_count += 1
+                total_bytes += result['size']
+                total_speed += result['speed']
+                successful_transfers += 1
 
     elapsed_time = time() - start_time
+    avg_speed = total_speed / successful_transfers if successful_transfers > 0 else 0
+    
     cache_total, cache_used, cache_free = shutil.disk_usage(config['Paths']['CACHE_PATH'])
     final_cache_usage = (cache_used / cache_total) * 100
     
@@ -400,6 +425,7 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
         'files_moved': files_moved_count,
         'total_bytes': total_bytes,
         'elapsed_time': elapsed_time,
+        'avg_speed': avg_speed,
         'final_cache_usage': final_cache_usage,
         'cache_free': cache_free,
         'cache_total': cache_total,
@@ -533,10 +559,11 @@ def main():
                         cache_total=stats['cache_total'],
                         backing_usage=stats['final_backing_usage'],
                         backing_free=stats['backing_free'],
-                        backing_total=stats['backing_total']
+                        backing_total=stats['backing_total'],
+                        avg_speed=stats['avg_speed']
                     )
                     logging.info(f"Moved {stats['files_moved']} files in {stats['elapsed_time']:.1f} seconds")
-                    logging.info(f"Average speed: {(stats['total_bytes'] / (1024**2)) / stats['elapsed_time']:.1f} MB/s")
+                    logging.info(f"Average transfer speed: {stats['avg_speed']:.1f} MB/s")
                     logging.info(f"Removed {empty_dirs_count} empty directories")
                 else:
                     cache_total, cache_used, cache_free = shutil.disk_usage(config['Paths']['CACHE_PATH'])
