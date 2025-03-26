@@ -1,20 +1,18 @@
 # mergerfs-cache-mover
 
-# 🎉 v1.0 released with Docker support! - v1.1 released with Apprise support! 🎉
-
-Python script for moving files on a cached disk to a backing mergerFS disk pool.
+Python script / Docker container for moving files. Used primarily for moves from a 'cached' location to a backing backing disk pool.
 
 This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/)
 
 ## How It Works
-The script operates by checking the disk usage of the defined 'cache' directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are cleaned up after this operation.
+The script operates by checking the disk usage of the defined 'cache' directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are cleaned after this operation.
 
 The script uses a configuration file or environment variables in Docker to manage settings such as paths, thresholds, and system parameters. 
 
-At runtime it will checks for other instances of itself to prevent multiple concurrent operations, in the event a move process is still occurring from a previous run either because you are using slow storage, running the script too regularly, or both.
+At runtime, a check for other instances of itself will prevent multiple concurrent operations. In the event a move process is still occurring from a previous run because you are using slow storage, running the script too regularly, or both, the script will not run.
 
 ## File Moving Process
-This script now uses Python's built-in file operations instead of rsync:
+This script uses the following Python file operations:
 
   - `shutil.copy2()`: Copies files while preserving metadata.
   - `os.chmod()`: Explicitly sets file permissions to match the source.
@@ -90,7 +88,7 @@ services:
 ```
 
 ### Manual Trigger
-To manually trigger the cache mover via docker:
+To manually trigger the cache mover via docker in two ways. If you do not have a running container:
 
 ```bash
 docker run --rm \
@@ -104,13 +102,15 @@ docker run --rm \
   -e TARGET_PERCENTAGE=0 \
   ghcr.io/monstermuffin/mergerfs-cache-mover:latest \
   python cache-mover.py --console-log
+```
 
-# Or with a running container bypassing cron
+Or with an existing running container bypassing cron:
+```bash
 docker exec mergerfs-cache-mover python cache-mover.py --console-log
 ```
 
 ### Important Notes
-1. **Graceful Shutdown**: The container includes graceful shutdown handling. This ensures that any in-progress file moves complete safely when the container is stopped. If you try and quit the container forcefully during a move, you may face data corruption.
+1. **Graceful Shutdown**: The container includes graceful shutdown handling. This ensures that any in-progress file moves complete safely when the container is stopped. If you try and quit the container forcefully during a move, you may experience data corruption.
 
 2. **Permissions**: The container requires privileged mode to access and modify file permissions correctly, same as the script method.
 
@@ -132,20 +132,6 @@ You can also view the logs with the usual:
 ```bash
 docker logs mergerfs-cache-mover
 ```
-
-### Troubleshooting
-1. **Permission Issues**
-   - Ensure the container is running in privileged mode
-   - Verify the mounted volumes have correct permissions
-
-2. **Schedule Not Working**
-   - Check the SCHEDULE environment variable format
-   - Verify the container is running (docker ps -a)
-   - Check container logs for errors
-
-3. **Files Not Moving**
-   - Check excluded directories
-   - Verify disk usage thresholds
 
 ## Setup - Bare Metal
 1. To get started, clone the repository to your local machine using the following command:
@@ -179,8 +165,8 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 > [!WARNING]  
 > This script must be run as root (using sudo) for the following reasons:
 
-- File Permissions: Running as root ensures the script can read from and write to all directories, preserving original file permissions and ownership.
-- Directory Creation: Root access is required to create directories with the correct permissions in the destination path.
+- **File Permissions**: Running as root ensures the script can read from and write to all directories, preserving original file permissions and ownership.
+- **Directory Creation**: Root access is required to create directories with the correct permissions in the destination path.
 
 ## Notifications
 As of v1.1 support for various notification methods through was added via the Apprise library. This includes detailed notifications for script completion, threshold alerts, and error states.
@@ -203,16 +189,16 @@ Or via Docker environment variables:
 environment:
   - NOTIFICATIONS_ENABLED: true
   - NOTIFICATION_URLS: discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK  
-  - NOTIFY_THRESHOLD: "true"
+  - NOTIFY_THRESHOLD: true
 ```
 
 ### Supported Services
 Currently, the script provides rich formatting support for:
-- **Discord**: Full embed support with detailed statistics
-- **Slack**: Rich message formatting with detailed statistics
+- **Discord**: Full embed support with detailed statistics.
+- **Slack**: Rich message formatting with detailed statistics.
 
 And basic support for:
-- **Other Services**: Basic notification support through Apprise
+- **Other Services**: Basic notification support through Apprise.
 
 To see how to configure your service, please see the [Approise docs.](https://github.com/caronc/apprise#productivity-based-notifications)
 
@@ -369,13 +355,11 @@ Settings:
 ```
 
 ### Auto-Update
-I have now included an auto-update feature. At runtime, the script checks for updates from the GitHub repository and automatically updates itself if a new version is available.
-
-Note: The auto-update feature is only available in versions after commit [b140b0c](https://github.com/monstermuffin/mergerfs-cache-mover/tree/b140b0c10cdc48506c96e2e23a1b8a2bef82109d). Any version before this commit will not have this feature.
+If enabled the script checks for updates at runtime from the GitHub and automatically updates itself if a new version is available. There is an option for checking a specific branch, unless you have a specific reason to, this should stay as `main`.
 
 ## Changelog
 See the full changelog [here](./CHANGELOG.md).
 
-
 ## Fin.
-This has been working well for me, but always take care.
+Cheers, if you have any issues please do not hesitate to raise an issue.
+✌️
