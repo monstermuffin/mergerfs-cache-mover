@@ -15,7 +15,7 @@ import signal
 from time import time
 from notifications import NotificationHandler
 
-__version__ = "1.1"
+__version__ = "1.3"
 
 class HybridFormatter(logging.Formatter):
     def __init__(self, fmt="%(levelname)s: %(message)s"):
