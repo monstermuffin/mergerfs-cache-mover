@@ -51,10 +51,11 @@ def main():
         # Check current cache usage
         current_usage, needs_cleanup = cleanup_mgr.check_usage()
 
-        if not needs_cleanup and not args.dry_run:
-            logger.info("Cache usage below threshold, nothing to do")
+        if not args.dry_run and current_usage <= cleanup_mgr.threshold:
+            logger.info("Cache usage below threshold")
             notification_mgr.notify_threshold_not_met(current_usage, cleanup_mgr.threshold)
-            sys.exit(0)
+            if not needs_cleanup:
+                sys.exit(0)
 
         # Set up signal handling
         def signal_handler(signum, frame):
