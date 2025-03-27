@@ -220,12 +220,100 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
         logging.error(f"Error moving hardlinked files: {e}")
         return False, 0, 0
 
+def move_symlink(src, dest_base, config, target_reached_lock, dry_run=False, stop_event=None):
+    """
+    Move a symbolic link by recreating it at the destination.
+    
+    Args:
+        src (str): Source symlink path
+        dest_base (str): Base destination directory
+        config (dict): Configuration dictionary
+        target_reached_lock (Lock): Lock for thread synchronization
+        dry_run (bool): If True, only simulate operations
+        stop_event (Event): Event to signal stopping
+    
+    Returns:
+        tuple: (success, bytes_moved, time_taken)
+    """
+    if stop_event and stop_event.is_set():
+        return False, 0, 0
+
+    cache_path = config['Paths']['CACHE_PATH']
+    backing_path = config['Paths']['BACKING_PATH']
+    target_percentage = config['Settings']['TARGET_PERCENTAGE']
+    
+    rel_path = os.path.relpath(src, cache_path)
+    dest = os.path.join(dest_base, rel_path)
+    dest_dir = os.path.dirname(dest)
+
+    try:
+        start_time = time()
+        
+        # Check if we've reached the target
+        with target_reached_lock:
+            current_usage = get_fs_usage(cache_path)
+            if current_usage <= target_percentage:
+                return False, 0, 0
+
+        # Get the target of the symlink
+        target = os.readlink(src)
+        
+        # Ensure destination directory exists
+        if not dry_run and not os.path.exists(dest_dir):
+            os.makedirs(dest_dir, exist_ok=True)
+
+        # Create the symlink at the destination
+        if not dry_run:
+            try:
+                # Remove destination if it exists
+                if os.path.lexists(dest):
+                    os.remove(dest)
+                
+                # Create the new symlink
+                os.symlink(target, dest)
+                
+                # Remove the source symlink
+                os.remove(src)
+            except OSError as e:
+                logging.error(f"Failed to move symlink {src}: {e}")
+                # Try to clean up if something went wrong
+                if os.path.exists(dest):
+                    try:
+                        os.remove(dest)
+                    except OSError:
+                        pass
+                return False, 0, 0
+
+        end_time = time()
+        time_taken = end_time - start_time
+
+        # Log the move operation
+        log_record = logging.LogRecord(
+            name='cache_mover',
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=0,
+            msg=f"{'Would move' if dry_run else 'Moved'} symlink -> {target}",
+            args=(),
+            exc_info=None
+        )
+        log_record.src = src
+        log_record.dest = dest
+        log_record.file_move = True
+        logging.getLogger().handle(log_record)
+
+        # Return 0 for bytes_moved since symlinks don't count towards storage
+        return True, 0, time_taken
+    except (OSError, IOError) as e:
+        logging.error(f"Error moving symlink {src}: {e}")
+        return False, 0, 0
+
 def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=None):
     """
     Move files concurrently using a thread pool.
     
     Args:
-        files_to_move (tuple): Tuple of (regular_files, hardlink_groups)
+        files_to_move (tuple): Tuple of (regular_files, hardlink_groups, symlinks)
         config (dict): Configuration dictionary
         dry_run (bool): If True, only simulate operations
         stop_event (Event): Event to signal stopping
@@ -233,8 +321,8 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
     Returns:
         tuple: (moved_count, total_bytes_moved, elapsed_time, avg_speed)
     """
-    regular_files, hardlink_groups = files_to_move
-    if not regular_files and not hardlink_groups:
+    regular_files, hardlink_groups, symlinks = files_to_move
+    if not regular_files and not hardlink_groups and not symlinks:
         return 0, 0, 0, 0
 
     cache_path = config['Paths']['CACHE_PATH']
@@ -276,6 +364,20 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                 )
             ] = f"hardlink_group_{inode}"
 
+        # Submit symlink moves
+        for src, target in symlinks.items():
+            future_to_file[
+                executor.submit(
+                    move_symlink,
+                    src,
+                    backing_path,
+                    config,
+                    target_reached_lock,
+                    dry_run,
+                    stop_event
+                )
+            ] = f"symlink_{src}"
+
         for future in as_completed(future_to_file):
             if stop_event and stop_event.is_set():
                 break
@@ -288,6 +390,9 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                     if isinstance(src, str) and src.startswith("hardlink_group_"):
                         inode = int(src.split("_")[-1])
                         moved_count += len(hardlink_groups[inode])
+                    # For symlinks, just count as one file
+                    elif isinstance(src, str) and src.startswith("symlink_"):
+                        moved_count += 1
                     else:
                         moved_count += 1
                     total_bytes_moved += bytes_moved

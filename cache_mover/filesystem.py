@@ -79,20 +79,39 @@ def get_hardlink_groups(files):
     # Filter out single-file groups (not hardlinked)
     return {k: v for k, v in hardlink_groups.items() if len(v) > 1}
 
+def is_symlink(path):
+    """
+    Check if a path is a symbolic link.
+    
+    Args:
+        path (str): Path to check
+    
+    Returns:
+        tuple: (is_symlink, target_path) if symlink, (False, None) otherwise
+    """
+    try:
+        if os.path.islink(path):
+            return True, os.readlink(path)
+        return False, None
+    except (OSError, IOError) as e:
+        logging.warning(f"Error checking symlink for {path}: {e}")
+        return False, None
+
 def gather_files_to_move(config):
     """
     Gather list of files to move from cache to backing storage.
-    Groups hardlinked files together.
+    Groups hardlinked files together and identifies symlinks.
     
     Args:
         config (dict): Configuration dictionary
     
     Returns:
-        tuple: (list of regular files to move, dict of hardlink groups)
+        tuple: (list of regular files to move, dict of hardlink groups, dict of symlinks)
     """
     cache_path = config['Paths']['CACHE_PATH']
     excluded_dirs = config['Settings']['EXCLUDED_DIRS']
     files_to_move = []
+    symlinks = {}
 
     for root, _, files in os.walk(cache_path):
         if is_excluded(root, excluded_dirs):
@@ -101,6 +120,12 @@ def gather_files_to_move(config):
         for file in files:
             file_path = os.path.join(root, file)
             try:
+                # Check if it's a symlink first
+                is_link, target = is_symlink(file_path)
+                if is_link:
+                    symlinks[file_path] = target
+                    continue
+
                 # Skip files that are currently being written
                 if os.path.getsize(file_path) == 0:
                     continue
@@ -114,7 +139,7 @@ def gather_files_to_move(config):
     hardlinked_files = set(f for group in hardlink_groups.values() for f in group)
     regular_files = [f for f in files_to_move if f not in hardlinked_files]
 
-    return regular_files, hardlink_groups
+    return regular_files, hardlink_groups, symlinks
 
 def remove_empty_dirs(path, excluded_dirs, dry_run=False):
     """

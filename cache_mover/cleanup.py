@@ -54,14 +54,19 @@ class CleanupManager:
         """
         # Gather files to move
         files_to_move = gather_files_to_move(self.config)
-        regular_files, hardlink_groups = files_to_move
-        total_files = len(regular_files) + sum(len(group) for group in hardlink_groups.values())
+        regular_files, hardlink_groups, symlinks = files_to_move
+        total_files = len(regular_files) + sum(len(group) for group in hardlink_groups.values()) + len(symlinks)
         
         if total_files == 0:
             logging.info("No files to move")
             return None
 
-        logging.info(f"Found {total_files} files to move ({len(regular_files)} regular files, {sum(len(group) for group in hardlink_groups.values())} hardlinked files in {len(hardlink_groups)} groups)")
+        logging.info(
+            f"Found {total_files} files to move:\n"
+            f"  - {len(regular_files)} regular files\n"
+            f"  - {sum(len(group) for group in hardlink_groups.values())} hardlinked files in {len(hardlink_groups)} groups\n"
+            f"  - {len(symlinks)} symbolic links"
+        )
         
         # Move files
         moved_count, total_bytes, elapsed_time, avg_speed = move_files_concurrently(
