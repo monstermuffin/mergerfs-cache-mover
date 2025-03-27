@@ -223,6 +223,7 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
 def move_symlink(src, dest_base, config, target_reached_lock, dry_run=False, stop_event=None):
     """
     Move a symbolic link by recreating it at the destination.
+    Handles cases where the symlink target is also being moved from cache to backing storage.
     
     Args:
         src (str): Source symlink path
@@ -258,6 +259,23 @@ def move_symlink(src, dest_base, config, target_reached_lock, dry_run=False, sto
         # Get the target of the symlink
         target = os.readlink(src)
         
+        # Convert target to absolute path if it's relative
+        if not os.path.isabs(target):
+            target = os.path.normpath(os.path.join(os.path.dirname(src), target))
+        
+        # Check if the target is within the cache path
+        try:
+            rel_target = os.path.relpath(target, cache_path)
+            # If we get here without ValueError, the target is within cache_path
+            if not rel_target.startswith('..'):
+                # Target is in cache, so it will be moved to backing storage
+                # Update target to point to new location
+                target = os.path.join(backing_path, rel_target)
+                logging.debug(f"Symlink target {rel_target} is in cache, updating to point to backing storage: {target}")
+        except ValueError:
+            # Target is outside cache_path, keep original target
+            pass
+
         # Ensure destination directory exists
         if not dry_run and not os.path.exists(dest_dir):
             os.makedirs(dest_dir, exist_ok=True)
