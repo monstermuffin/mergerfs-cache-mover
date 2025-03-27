@@ -342,14 +342,28 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 As of v1.3, the script now supports preserving hardlinks when moving files between different filesystems. When files with the same inode (hardlinked files) are detected, they are:
 
-- Grouped together based on inode relationships.
-- Moved as a single unit to preserve their relationships.
-- Recreated with proper hardlink structure on the destination filesystem.
+- Grouped together based on inode relationships
+- Moved as a single unit to preserve their relationships
+- Recreated with proper hardlink structure on the destination filesystem
 
 The script identifies the hardlink relationships and recreates them on the destination filesystem, even though direct hardlinking between different filesystems isn't normally possible.
 
 > [!NOTE]  
 > Hardlinks are preserved within each move operation. If hardlinked files are moved in separate runs of the script, their hardlink relationship cannot be preserved.
+
+### Symlink Support
+
+The script provides support for symbolic links (symlinks), handling both absolute and relative paths:
+
+- Automatically identifies symbolic links during the file gathering phase.
+- Maintains the original symlink structure while moving to the new location.
+- Automatically adjusts symlink targets when they point to files that are also being moved.
+  - If a symlink points to a file within the cache directory, its target is updated to point to the new location in backing storage.
+  - If a symlink points outside the cache directory, its original target is preserved.
+- Properly handles both absolute and relative symlinks, maintaining their relationships.
+
+> [!NOTE]  
+> The script ensures that symlinks remain valid after the move operation by tracking and updating their targets as needed.
 
 ### Empty Cache Mode
 To completely empty the cache regardless of current usage and target percentage (except for excluded files), set both percentages to 0 either in ENV vars for docker or your `config.yml`.
