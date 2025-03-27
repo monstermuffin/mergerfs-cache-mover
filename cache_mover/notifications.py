@@ -15,10 +15,21 @@ class NotificationManager:
         Args:
             config (dict): Configuration dictionary
         """
+        self.config = config
         self.enabled = config['Settings']['NOTIFICATIONS_ENABLED']
         self.urls = config['Settings']['NOTIFICATION_URLS']
         self.notify_threshold = config['Settings'].get('NOTIFY_THRESHOLD', False)
-        self.handler = BaseNotificationHandler(self.enabled, self.urls)
+        
+        # Create a config structure that matches what NotificationHandler expects
+        handler_config = {
+            'Settings': {
+                'NOTIFICATIONS_ENABLED': self.enabled,
+                'NOTIFICATION_URLS': self.urls,
+                'NOTIFY_THRESHOLD': self.notify_threshold
+            },
+            'Paths': config.get('Paths', {})
+        }
+        self.handler = BaseNotificationHandler(handler_config)
 
     def notify_threshold_not_met(self, current_usage, threshold):
         """
@@ -31,9 +42,9 @@ class NotificationManager:
         if not self.enabled or not self.notify_threshold:
             return
 
-        self.handler.send_notification(
-            "Cache Mover Status",
-            f"Cache usage ({current_usage:.1f}%) below threshold ({threshold}%), nothing to do"
+        self.handler.notify_threshold_not_met(
+            current_usage=current_usage,
+            threshold=threshold
         )
 
     def notify_completion(self, moved_count, final_usage):
@@ -47,9 +58,26 @@ class NotificationManager:
         if not self.enabled:
             return
 
-        self.handler.send_notification(
-            "Cache Mover Complete",
-            f"Moved {moved_count} files. Cache usage: {final_usage:.1f}%"
+        # Get cache and backing storage stats
+        cache_path = self.config['Paths']['CACHE_PATH']
+        backing_path = self.config['Paths']['BACKING_PATH']
+        
+        import shutil
+        cache_total, cache_used, cache_free = shutil.disk_usage(cache_path)
+        backing_total, backing_used, backing_free = shutil.disk_usage(backing_path)
+        backing_usage = (backing_used / backing_total) * 100
+
+        self.handler.notify_completion(
+            files_moved=moved_count,
+            total_bytes=0,
+            elapsed_time=0,
+            final_usage=final_usage,
+            cache_free=cache_free,
+            cache_total=cache_total,
+            backing_usage=backing_usage,
+            backing_free=backing_free,
+            backing_total=backing_total,
+            avg_speed=0
         )
 
     def notify_error(self, error_message):
@@ -62,7 +90,4 @@ class NotificationManager:
         if not self.enabled:
             return
 
-        self.handler.send_notification(
-            "Cache Mover Error",
-            f"An error occurred: {error_message}"
-        )
+        self.handler.notify_error(error_message)
