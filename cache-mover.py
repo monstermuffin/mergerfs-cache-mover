@@ -66,8 +66,14 @@ def main():
         # Run cleanup
         result = cleanup_mgr.run_cleanup()
         if result:
-            moved_count, final_usage = result
-            notification_mgr.notify_completion(moved_count, final_usage)
+            moved_count, final_usage, total_bytes, elapsed_time, avg_speed = result
+            notification_mgr.notify_completion(
+                moved_count=moved_count,
+                final_usage=final_usage,
+                total_bytes=total_bytes,
+                elapsed_time=elapsed_time,
+                avg_speed=avg_speed
+            )
 
     except Exception as e:
         logger.error(f"Error during execution: {e}")

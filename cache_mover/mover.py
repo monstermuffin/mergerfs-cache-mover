@@ -1,3 +1,7 @@
+"""
+Core file moving functionality.
+"""
+
 import os
 import shutil
 import logging
@@ -21,10 +25,10 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
         stop_event (Event): Event to signal stopping
     
     Returns:
-        tuple: (success, bytes_moved)
+        tuple: (success, bytes_moved, time_taken)
     """
     if stop_event and stop_event.is_set():
-        return False, 0
+        return False, 0, 0
 
     cache_path = config['Paths']['CACHE_PATH']
     backing_path = config['Paths']['BACKING_PATH']
@@ -36,12 +40,13 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
 
     try:
         file_size = os.path.getsize(src)
+        start_time = time()
         
         # Check if we've reached the target
         with target_reached_lock:
             current_usage = get_fs_usage(cache_path)
             if current_usage <= target_percentage:
-                return False, 0
+                return False, 0, 0
 
         # Ensure destination directory exists
         if not dry_run and not os.path.exists(dest_dir):
@@ -50,7 +55,7 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
         # Check if we have enough space
         if not dry_run and get_fs_free_space(backing_path) < file_size:
             logging.error(f"Not enough space in backing storage for {src}")
-            return False, 0
+            return False, 0, 0
 
         # Move the file
         if not dry_run:
@@ -69,14 +74,17 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
                         os.remove(dest)
                     except OSError:
                         pass
-                    return False, 0
+                    return False, 0, 0
             else:
                 logging.error(f"Size mismatch after copying {src}")
                 try:
                     os.remove(dest)
                 except OSError:
                     pass
-                return False, 0
+                return False, 0, 0
+
+        end_time = time()
+        time_taken = end_time - start_time
 
         # Log the move operation
         log_record = logging.LogRecord(
@@ -93,10 +101,10 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
         log_record.file_move = True
         logging.getLogger().handle(log_record)
 
-        return True, file_size
+        return True, file_size, time_taken
     except (OSError, IOError) as e:
         logging.error(f"Error moving file {src}: {e}")
-        return False, 0
+        return False, 0, 0
 
 def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=None):
     """
@@ -109,10 +117,10 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
         stop_event (Event): Event to signal stopping
     
     Returns:
-        tuple: (moved_count, total_bytes_moved)
+        tuple: (moved_count, total_bytes_moved, elapsed_time, avg_speed)
     """
     if not files_to_move:
-        return 0, 0
+        return 0, 0, 0, 0
 
     cache_path = config['Paths']['CACHE_PATH']
     backing_path = config['Paths']['BACKING_PATH']
@@ -122,6 +130,7 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
     target_reached_lock = Lock()
     moved_count = 0
     total_bytes_moved = 0
+    total_time = 0
     start_time = time()
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -143,10 +152,11 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
 
             src = future_to_file[future]
             try:
-                success, bytes_moved = future.result()
+                success, bytes_moved, time_taken = future.result()
                 if success:
                     moved_count += 1
                     total_bytes_moved += bytes_moved
+                    total_time += time_taken
 
                     # Check if we've reached the target
                     current_usage = get_fs_usage(cache_path)
@@ -160,11 +170,12 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                 logging.error(f"Error processing {src}: {e}")
 
     elapsed_time = time() - start_time
+    avg_speed = total_bytes_moved / (1024 * 1024 * elapsed_time) if elapsed_time > 0 else 0
+
     if moved_count > 0:
-        avg_speed = total_bytes_moved / elapsed_time
         logging.info(
             f"Moved {moved_count} files ({_format_bytes(total_bytes_moved)}) "
-            f"in {elapsed_time:.1f}s ({_format_bytes(avg_speed)}/s)"
+            f"in {elapsed_time:.1f}s ({avg_speed:.2f}MB/s)"
         )
 
-    return moved_count, total_bytes_moved 
+    return moved_count, total_bytes_moved, elapsed_time, avg_speed 

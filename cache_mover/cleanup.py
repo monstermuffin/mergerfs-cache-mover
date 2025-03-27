@@ -50,7 +50,7 @@ class CleanupManager:
         Run the cleanup operation.
         
         Returns:
-            tuple: (moved_count, final_usage) or None if no cleanup needed
+            tuple: (moved_count, final_usage, total_bytes, elapsed_time, avg_speed) or None if no cleanup needed
         """
         # Gather files to move
         files_to_move = gather_files_to_move(self.config)
@@ -61,7 +61,7 @@ class CleanupManager:
         logging.info(f"Found {len(files_to_move)} files to move")
         
         # Move files
-        moved_count, total_bytes_moved = move_files_concurrently(
+        moved_count, total_bytes, elapsed_time, avg_speed = move_files_concurrently(
             files_to_move,
             self.config,
             self.dry_run,
@@ -80,7 +80,7 @@ class CleanupManager:
 
         # Get final usage
         final_usage = get_fs_usage(self.cache_path)
-        return moved_count, final_usage
+        return moved_count, final_usage, total_bytes, elapsed_time, avg_speed
 
     def stop(self):
         """Signal the cleanup operation to stop."""
