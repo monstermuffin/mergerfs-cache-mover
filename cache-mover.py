@@ -13,7 +13,21 @@ from cache_mover.notifications import NotificationManager
 from cache_mover.cleanup import CleanupManager
 from cache_mover import __version__
 
+def display_art():
+    """Display the MANS ASCII art."""
+    art = """
+◢◤◢◤◢◤ ███╗░░░███╗░█████╗░███╗░░██╗░██████╗ ◢◤◢◤◢◤
+◢◤◢◤◢◤ ████╗░████║██╔══██╗████╗░██║██╔════╝ ◢◤◢◤◢◤
+◢◤◢◤◢◤ ██╔████╔██║███████║██╔██╗██║╚█████╗░ ◢◤◢◤◢◤
+◢◤◢◤◢◤ ██║╚██╔╝██║██╔══██║██║╚████║░╚═══██╗ ◢◤◢◤◢◤
+◢◤◢◤◢◤ ██║░╚═╝░██║██║░░██║██║░╚███║██████╔╝ ◢◤◢◤◢◤
+◢◤◢◤◢◤ ╚═╝░░░░░╚═╝╚═╝░░╚═╝╚═╝░░╚══╝╚═════╝░ ◢◤◢◤◢◤
+"""
+    print(art)
+
 def main():
+    display_art()
+    
     parser = argparse.ArgumentParser(description='MergerFS Cache Mover')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be moved without moving')
     parser.add_argument('--console-log', action='store_true', help='Log to console in addition to file')
