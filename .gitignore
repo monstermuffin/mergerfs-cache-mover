@@ -3,3 +3,4 @@ config.yml
 *.DS_STORE*
 .vscode/ltex*
 notifications_old.py
+.vscode/
