@@ -106,12 +106,126 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
         logging.error(f"Error moving file {src}: {e}")
         return False, 0, 0
 
+def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock, dry_run=False, stop_event=None):
+    """
+    Move a group of hardlinked files while preserving their hardlinks.
+    
+    Args:
+        hardlink_group (list): List of hardlinked file paths
+        dest_base (str): Base destination directory
+        config (dict): Configuration dictionary
+        target_reached_lock (Lock): Lock for thread synchronization
+        dry_run (bool): If True, only simulate operations
+        stop_event (Event): Event to signal stopping
+    
+    Returns:
+        tuple: (success, bytes_moved, time_taken)
+    """
+    if stop_event and stop_event.is_set():
+        return False, 0, 0
+
+    cache_path = config['Paths']['CACHE_PATH']
+    backing_path = config['Paths']['BACKING_PATH']
+    target_percentage = config['Settings']['TARGET_PERCENTAGE']
+    
+    try:
+        # Use the first file in the group to get size and check space
+        src_first = hardlink_group[0]
+        file_size = os.path.getsize(src_first)
+        start_time = time()
+        
+        # Check if we've reached the target
+        with target_reached_lock:
+            current_usage = get_fs_usage(cache_path)
+            if current_usage <= target_percentage:
+                return False, 0, 0
+
+        # Check if we have enough space
+        if not dry_run and get_fs_free_space(backing_path) < file_size:
+            logging.error(f"Not enough space in backing storage for hardlinked files")
+            return False, 0, 0
+
+        # Process each file in the hardlink group
+        for src in hardlink_group:
+            rel_path = os.path.relpath(src, cache_path)
+            dest = os.path.join(dest_base, rel_path)
+            dest_dir = os.path.dirname(dest)
+
+            # Ensure destination directory exists
+            if not dry_run and not os.path.exists(dest_dir):
+                os.makedirs(dest_dir, exist_ok=True)
+
+            # Move the file
+            if not dry_run:
+                # Copy the first file normally
+                if src == hardlink_group[0]:
+                    shutil.copy2(src, dest)
+                else:
+                    # Create hardlinks for subsequent files
+                    try:
+                        first_dest = os.path.join(dest_base, os.path.relpath(hardlink_group[0], cache_path))
+                        os.link(first_dest, dest)
+                    except OSError as e:
+                        logging.error(f"Failed to create hardlink for {src}: {e}")
+                        return False, 0, 0
+
+        # Verify and cleanup
+        if not dry_run:
+            # Verify first file
+            first_dest = os.path.join(dest_base, os.path.relpath(hardlink_group[0], cache_path))
+            if os.path.getsize(first_dest) == file_size:
+                # Remove source files
+                for src in hardlink_group:
+                    try:
+                        os.remove(src)
+                    except OSError as e:
+                        logging.error(f"Failed to remove source file {src}: {e}")
+                        # Try to clean up destination files
+                        for dest_file in [os.path.join(dest_base, os.path.relpath(f, cache_path)) for f in hardlink_group]:
+                            try:
+                                os.remove(dest_file)
+                            except OSError:
+                                pass
+                        return False, 0, 0
+            else:
+                logging.error(f"Size mismatch after copying hardlinked files")
+                # Clean up destination files
+                for dest_file in [os.path.join(dest_base, os.path.relpath(f, cache_path)) for f in hardlink_group]:
+                    try:
+                        os.remove(dest_file)
+                    except OSError:
+                        pass
+                return False, 0, 0
+
+        end_time = time()
+        time_taken = end_time - start_time
+
+        # Log the move operation
+        log_record = logging.LogRecord(
+            name='cache_mover',
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=0,
+            msg=f"{'Would move' if dry_run else 'Moved'} hardlinked group ({len(hardlink_group)} files) {_format_bytes(file_size)}",
+            args=(),
+            exc_info=None
+        )
+        log_record.src = hardlink_group[0]
+        log_record.dest = os.path.join(dest_base, os.path.relpath(hardlink_group[0], cache_path))
+        log_record.file_move = True
+        logging.getLogger().handle(log_record)
+
+        return True, file_size, time_taken
+    except (OSError, IOError) as e:
+        logging.error(f"Error moving hardlinked files: {e}")
+        return False, 0, 0
+
 def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=None):
     """
     Move files concurrently using a thread pool.
     
     Args:
-        files_to_move (list): List of files to move
+        files_to_move (tuple): Tuple of (regular_files, hardlink_groups)
         config (dict): Configuration dictionary
         dry_run (bool): If True, only simulate operations
         stop_event (Event): Event to signal stopping
@@ -119,7 +233,8 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
     Returns:
         tuple: (moved_count, total_bytes_moved, elapsed_time, avg_speed)
     """
-    if not files_to_move:
+    regular_files, hardlink_groups = files_to_move
+    if not regular_files and not hardlink_groups:
         return 0, 0, 0, 0
 
     cache_path = config['Paths']['CACHE_PATH']
@@ -134,6 +249,7 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
     start_time = time()
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit regular file moves
         future_to_file = {
             executor.submit(
                 move_file, 
@@ -143,8 +259,22 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                 target_reached_lock,
                 dry_run,
                 stop_event
-            ): src for src in files_to_move
+            ): src for src in regular_files
         }
+        
+        # Submit hardlinked file group moves
+        for inode, group in hardlink_groups.items():
+            future_to_file[
+                executor.submit(
+                    move_hardlinked_files,
+                    group,
+                    backing_path,
+                    config,
+                    target_reached_lock,
+                    dry_run,
+                    stop_event
+                )
+            ] = f"hardlink_group_{inode}"
 
         for future in as_completed(future_to_file):
             if stop_event and stop_event.is_set():
@@ -154,7 +284,12 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
             try:
                 success, bytes_moved, time_taken = future.result()
                 if success:
-                    moved_count += 1
+                    # For hardlink groups, count each file in the group
+                    if isinstance(src, str) and src.startswith("hardlink_group_"):
+                        inode = int(src.split("_")[-1])
+                        moved_count += len(hardlink_groups[inode])
+                    else:
+                        moved_count += 1
                     total_bytes_moved += bytes_moved
                     total_time += time_taken
 

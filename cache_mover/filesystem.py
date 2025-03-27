@@ -3,6 +3,7 @@ import shutil
 import stat
 import logging
 import psutil
+from collections import defaultdict
 
 def get_fs_usage(path):
     """Get filesystem usage percentage for the given path."""
@@ -35,15 +36,59 @@ def is_excluded(path, excluded_dirs):
     path_parts = path.split(os.sep)
     return any(excluded in path_parts for excluded in excluded_dirs)
 
+def get_file_inode(path):
+    """
+    Get the inode number of a file.
+    
+    Args:
+        path (str): Path to the file
+    
+    Returns:
+        int: Inode number of the file
+    """
+    try:
+        return os.stat(path).st_ino
+    except (OSError, IOError) as e:
+        logging.warning(f"Error getting inode for {path}: {e}")
+        return None
+
+def get_hardlink_groups(files):
+    """
+    Group files by their inode numbers to identify hardlinks.
+    
+    Args:
+        files (list): List of file paths
+    
+    Returns:
+        dict: Dictionary mapping inode numbers to lists of file paths
+    """
+    hardlink_groups = defaultdict(list)
+    
+    for file_path in files:
+        try:
+            inode = get_file_inode(file_path)
+            if inode is not None:
+                nlink = os.stat(file_path).st_nlink
+                # Only track files that have more than one link
+                if nlink > 1:
+                    hardlink_groups[inode].append(file_path)
+        except (OSError, IOError) as e:
+            logging.warning(f"Error processing hardlink for {file_path}: {e}")
+            continue
+    
+    # Filter out single-file groups (not hardlinked)
+    return {k: v for k, v in hardlink_groups.items() if len(v) > 1}
+
 def gather_files_to_move(config):
     """
     Gather list of files to move from cache to backing storage.
+    Groups hardlinked files together.
     
     Args:
         config (dict): Configuration dictionary
     
     Returns:
-        list: List of file paths to move
+        tuple: (list of regular files to move, dict of hardlink groups)
     """
     cache_path = config['Paths']['CACHE_PATH']
     excluded_dirs = config['Settings']['EXCLUDED_DIRS']
@@ -64,7 +109,12 @@ def gather_files_to_move(config):
                 logging.warning(f"Error accessing file {file_path}: {e}")
                 continue
 
-    return files_to_move
+    # Separate hardlinked files from regular files
+    hardlink_groups = get_hardlink_groups(files_to_move)
+    hardlinked_files = set(f for group in hardlink_groups.values() for f in group)
+    regular_files = [f for f in files_to_move if f not in hardlinked_files]
+
+    return regular_files, hardlink_groups
 
 def remove_empty_dirs(path, excluded_dirs, dry_run=False):
     """
