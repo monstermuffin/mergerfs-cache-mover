@@ -338,6 +338,19 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 ## Special Features
 
+### Hardlink Support
+
+As of v1.3, the script now supports preserving hardlinks when moving files between different filesystems. When files with the same inode (hardlinked files) are detected, they are:
+
+- Grouped together based on inode relationships.
+- Moved as a single unit to preserve their relationships.
+- Recreated with proper hardlink structure on the destination filesystem.
+
+The script identifies the hardlink relationships and recreates them on the destination filesystem, even though direct hardlinking between different filesystems isn't normally possible.
+
+> [!NOTE]  
+> Hardlinks are preserved within each move operation. If hardlinked files are moved in separate runs of the script, their hardlink relationship cannot be preserved.
+
 ### Empty Cache Mode
 To completely empty the cache regardless of current usage and target percentage (except for excluded files), set both percentages to 0 either in ENV vars for docker or your `config.yml`.
 
