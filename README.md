@@ -11,18 +11,7 @@ The script uses a configuration file or environment variables in Docker to manag
 
 At runtime, a check for other instances of itself will prevent multiple concurrent operations. In the event a move process is still occurring from a previous run because you are using slow storage, running the script too regularly, or both, the script will not run.
 
-## File Moving Process
-This script uses the following Python file operations:
-
-  - `shutil.copy2()`: Copies files while preserving metadata.
-  - `os.chmod()`: Explicitly sets file permissions to match the source.
-  - `os.chown()`: Attempts to set file ownership to match the source.
-  - `os.remove()`: Removes the source file after successful copy.
-
-## Logging
-The script logs its operations, which includes information on moved files, errors, and other warnings. The logs are rotated based on the file size and backup count defined in config.yml.
-
-Docker logs are shown in console at runtime, and also as a file on the host if you bind mount, as below.
+# Usage
 
 ## Setup - Docker
 Docker support was added in v1.0. The container will automatically run on a schedule defined in your configuration. This is a cron scedule.
@@ -167,6 +156,11 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 
 - **File Permissions**: Running as root ensures the script can read from and write to all directories, preserving original file permissions and ownership.
 - **Directory Creation**: Root access is required to create directories with the correct permissions in the destination path.
+
+## Logging
+The script logs its operations, which includes information on moved files, errors, and other warnings. The logs are rotated based on the file size and backup count defined in config.yml.
+
+Docker logs are shown in console at runtime, and also as a file on the host if you bind mount, as below.
 
 ## Notifications
 As of v1.1 support for various notification methods through was added via the Apprise library. This includes detailed notifications for script completion, threshold alerts, and error states.
@@ -386,6 +380,9 @@ If enabled the script checks for updates at runtime from the GitHub and automati
 
 ## Changelog
 See the full changelog [here](./CHANGELOG.md).
+
+## Contributing
+If you would like to contribute to the project, please raise an issue or PR. If you have any questions, feedback,suggestions or issues, please raise an issue.
 
 ## Fin.
 Cheers, if you have any issues please do not hesitate to raise an issue.
