@@ -51,6 +51,14 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
         # Ensure destination directory exists
         if not dry_run and not os.path.exists(dest_dir):
             os.makedirs(dest_dir, exist_ok=True)
+            # Copy directory ownership and permissions from source
+            src_dir = os.path.dirname(src)
+            try:
+                src_dir_stat = os.stat(src_dir)
+                os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
+                os.chmod(dest_dir, src_dir_stat.st_mode)
+            except OSError as e:
+                logging.warning(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
 
         # Check if we have enough space
         if not dry_run and get_fs_free_space(backing_path) < file_size:
@@ -162,6 +170,14 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
             # Ensure destination directory exists
             if not dry_run and not os.path.exists(dest_dir):
                 os.makedirs(dest_dir, exist_ok=True)
+                # Copy directory ownership and permissions from source
+                src_dir = os.path.dirname(src)
+                try:
+                    src_dir_stat = os.stat(src_dir)
+                    os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
+                    os.chmod(dest_dir, src_dir_stat.st_mode)
+                except OSError as e:
+                    logging.warning(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
 
             # Move the file
             if not dry_run:
@@ -295,6 +311,14 @@ def move_symlink(src, dest_base, config, target_reached_lock, dry_run=False, sto
         # Ensure destination directory exists
         if not dry_run and not os.path.exists(dest_dir):
             os.makedirs(dest_dir, exist_ok=True)
+            # Copy directory ownership and permissions from source
+            src_dir = os.path.dirname(src)
+            try:
+                src_dir_stat = os.stat(src_dir)
+                os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
+                os.chmod(dest_dir, src_dir_stat.st_mode)
+            except OSError as e:
+                logging.warning(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
 
         # Create the symlink at the destination
         if not dry_run:
