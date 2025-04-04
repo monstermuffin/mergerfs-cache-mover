@@ -50,6 +50,7 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
 
         # Get source file stats for permission preservation
         src_stat = os.stat(src)
+        logging.debug(f"Source file {src} permissions: mode={oct(stat.S_IMODE(src_stat.st_mode))}, uid={src_stat.st_uid}, gid={src_stat.st_gid}")
 
         # Ensure destination directory exists
         if not dry_run and not os.path.exists(dest_dir):
@@ -73,10 +74,18 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
             # Copy file with original permissions
             shutil.copy2(src, dest)
             
+            # Check permissions after copy2
+            dest_stat_after_copy = os.stat(dest)
+            logging.debug(f"Destination file {dest} permissions after copy2: mode={oct(stat.S_IMODE(dest_stat_after_copy.st_mode))}, uid={dest_stat_after_copy.st_uid}, gid={dest_stat_after_copy.st_gid}")
+            
             # Explicitly set ownership and permissions
             try:
                 os.chown(dest, src_stat.st_uid, src_stat.st_gid)
                 os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
+                
+                # Check final permissions
+                dest_stat_final = os.stat(dest)
+                logging.debug(f"Destination file {dest} final permissions: mode={oct(stat.S_IMODE(dest_stat_final.st_mode))}, uid={dest_stat_final.st_uid}, gid={dest_stat_final.st_gid}")
             except OSError as e:
                 logging.warning(f"Failed to set ownership/permissions for {dest}: {e}")
             
