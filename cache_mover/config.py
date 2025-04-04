@@ -53,7 +53,12 @@ def load_config():
             file_config = yaml.safe_load(config_file)
             config['Paths'].update(file_config.get('Paths', {}))
             
-            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS') or []
+            user_exclusions = file_config.get('Settings', {}).get('EXCLUDED_DIRS', [])
+            if isinstance(user_exclusions, str):
+                user_exclusions = [x.strip() for x in user_exclusions.split(',')]
+            elif not isinstance(user_exclusions, list):
+                user_exclusions = [str(user_exclusions)] if user_exclusions else []
+            
             combined_exclusions = list(set(HARDCODED_EXCLUSIONS + user_exclusions))
             
             settings_update = file_config.get('Settings', {})
@@ -71,7 +76,7 @@ def load_config():
         'MAX_LOG_SIZE_MB': ('Settings', 'MAX_LOG_SIZE_MB', int),
         'BACKUP_COUNT': ('Settings', 'BACKUP_COUNT', int),
         'UPDATE_BRANCH': ('Settings', 'UPDATE_BRANCH', str),
-        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: list(set(HARDCODED_EXCLUSIONS + (x.split(',') if x else [])))),
+        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: list(set(HARDCODED_EXCLUSIONS + [y.strip() for y in x.split(',')]) if x else HARDCODED_EXCLUSIONS)),
         'SCHEDULE': ('Settings', 'SCHEDULE', str),
         'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', lambda x: x.lower() == 'true'),
         'NOTIFICATION_URLS': ('Settings', 'NOTIFICATION_URLS', lambda x: x.split(',')),
