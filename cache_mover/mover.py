@@ -48,6 +48,9 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
             if current_usage <= target_percentage:
                 return False, 0, 0
 
+        # Get source file stats for permission preservation
+        src_stat = os.stat(src)
+
         # Ensure destination directory exists
         if not dry_run and not os.path.exists(dest_dir):
             os.makedirs(dest_dir, exist_ok=True)
@@ -70,8 +73,7 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
             # Copy file with original permissions
             shutil.copy2(src, dest)
             
-            # Explicitly set ownership and permissions !!Missing from rework!!
-            src_stat = os.stat(src)
+            # Explicitly set ownership and permissions
             try:
                 os.chown(dest, src_stat.st_uid, src_stat.st_gid)
                 os.chmod(dest, src_stat.st_mode)
@@ -161,6 +163,9 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
             logging.error(f"Not enough space in backing storage for hardlinked files")
             return False, 0, 0
 
+        # Get source file stats for permission preservation
+        src_stat = os.stat(src_first)
+
         # Process each file in the hardlink group
         for src in hardlink_group:
             rel_path = os.path.relpath(src, cache_path)
@@ -184,9 +189,7 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
                 # Copy the first file normally
                 if src == hardlink_group[0]:
                     shutil.copy2(src, dest)
-                    
                     # Explicitly set ownership and permissions
-                    src_stat = os.stat(src)
                     try:
                         os.chown(dest, src_stat.st_uid, src_stat.st_gid)
                         os.chmod(dest, src_stat.st_mode)
