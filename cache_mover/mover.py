@@ -168,6 +168,14 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
                 # Copy the first file normally
                 if src == hardlink_group[0]:
                     shutil.copy2(src, dest)
+                    
+                    # Explicitly set ownership and permissions
+                    src_stat = os.stat(src)
+                    try:
+                        os.chown(dest, src_stat.st_uid, src_stat.st_gid)
+                        os.chmod(dest, src_stat.st_mode)
+                    except OSError as e:
+                        logging.warning(f"Failed to set ownership/permissions for {dest}: {e}")
                 else:
                     # Create hardlinks for subsequent files
                     try:

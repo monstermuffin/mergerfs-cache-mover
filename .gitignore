@@ -4,3 +4,4 @@ config.yml
 .vscode/ltex*
 notifications_old.py
 .vscode/
+test_*.py
