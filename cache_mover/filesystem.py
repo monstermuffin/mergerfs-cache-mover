@@ -143,7 +143,8 @@ def gather_files_to_move(config):
 
 def remove_empty_dirs(path, excluded_dirs, dry_run=False):
     """
-    Recursively remove empty directories.
+    Recursively remove empty directories while preserving parent structure.
+    Only removes directories that become empty after file moves.
     
     Args:
         path (str): Starting path
@@ -161,7 +162,12 @@ def remove_empty_dirs(path, excluded_dirs, dry_run=False):
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
             try:
-                if not os.listdir(dir_path):  # Directory is empty
+                # Skip if directory is excluded
+                if is_excluded(dir_path, excluded_dirs):
+                    continue
+                    
+                # Only remove if directory is empty
+                if not os.listdir(dir_path):
                     if not dry_run:
                         os.rmdir(dir_path)
                     logging.info(f"{'Would remove' if dry_run else 'Removed'} empty directory: {dir_path}")
