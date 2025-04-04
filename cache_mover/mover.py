@@ -76,7 +76,7 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
             # Explicitly set ownership and permissions
             try:
                 os.chown(dest, src_stat.st_uid, src_stat.st_gid)
-                os.chmod(dest, src_stat.st_mode)
+                os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
             except OSError as e:
                 logging.warning(f"Failed to set ownership/permissions for {dest}: {e}")
             
@@ -192,7 +192,7 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
                     # Explicitly set ownership and permissions
                     try:
                         os.chown(dest, src_stat.st_uid, src_stat.st_gid)
-                        os.chmod(dest, src_stat.st_mode)
+                        os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
                     except OSError as e:
                         logging.warning(f"Failed to set ownership/permissions for {dest}: {e}")
                 else:
