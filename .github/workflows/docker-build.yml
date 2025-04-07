@@ -3,9 +3,9 @@ name: Build and Push Multi-Arch Image
 on:
   workflow_dispatch:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, rework ]
   pull_request:
-    branches: [ main, dev ]
+    branches: [ main, dev, rework ]
 
 env:
   REGISTRY: ghcr.io
