@@ -42,7 +42,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=dev,enable=${{ github.ref != 'refs/heads/main' }}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=rework,enable=${{ github.ref == 'refs/heads/rework' }}
             type=sha,format=short
             type=ref,event=pr
             type=semver,pattern={{ version }}
