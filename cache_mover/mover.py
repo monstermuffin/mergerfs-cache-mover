@@ -139,7 +139,7 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
                     os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
                     os.chmod(dest_dir, src_dir_stat.st_mode)
                 except OSError as e:
-                    logging.warning(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
+                    logging.info(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
 
             if not dry_run:
                 if src == hardlink_group[0]:
@@ -148,7 +148,7 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
                         os.chown(dest, src_stat.st_uid, src_stat.st_gid)
                         os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
                     except OSError as e:
-                        logging.warning(f"Failed to set ownership/permissions for {dest}: {e}")
+                        logging.info(f"Failed to set ownership/permissions for {dest}: {e}")
                 else:
                     try:
                         first_dest = os.path.join(dest_base, os.path.relpath(hardlink_group[0], cache_path))
@@ -245,7 +245,7 @@ def move_symlink(src, dest_base, config, target_reached_lock, dry_run=False, sto
                 os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
                 os.chmod(dest_dir, src_dir_stat.st_mode)
             except OSError as e:
-                logging.warning(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
+                logging.info(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
 
         if not dry_run:
             try:
