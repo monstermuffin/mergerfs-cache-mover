@@ -21,6 +21,6 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD ps aux | grep '[c]ache-mover.py' || exit 1
+    CMD pgrep cron || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]
