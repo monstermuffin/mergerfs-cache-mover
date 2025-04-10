@@ -38,6 +38,7 @@ services:
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
+      - /mnt/data-disks:/mnt/data-disks:rw  # Required for hardlink support, must be the root of your data disks.
       - ./logs:/var/log:rw  # Optional: Mount for persistent logs
     cap_add:
       - SYS_ADMIN
@@ -85,6 +86,7 @@ docker run --rm \
   --privileged \
   -v /mnt/cache-disks:/mnt/cache-disks:rw \
   -v /mnt/media-cold:/mnt/media-cold:rw \
+  -v /mnt/data-disks:/mnt/data-disks:rw \
   -e CACHE_PATH=/mnt/cache-disks/cache01 \
   -e BACKING_PATH=/mnt/media-cold \
   -e THRESHOLD_PERCENTAGE=0 \
@@ -121,6 +123,11 @@ You can also view the logs with the usual:
 ```bash
 docker logs mergerfs-cache-mover
 ```
+
+### Hardlink Support in Docker
+For hardlink preservation to work properly, you must mount both:
+- The mergerfs pool paths (cache and backing).
+- The underlying physical disk path(s), this should just be `/mnt/data-disks/` if using MANS.
 
 ## Setup - Bare Metal
 1. To get started, clone the repository to your local machine using the following command:
@@ -331,22 +338,37 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 ```
 
 ## Special Features
-
 ### Hardlink Support
 
-As of v1.3, the script now supports preserving hardlinks when moving files between different filesystems. When files with the same inode (hardlinked files) are detected, they are:
+As of v1.3, the script supports preserving hardlinks when moving files between different filesystems. When files with the same inode (hardlinked files) are detected, they are:
 
-- Grouped together based on inode relationships
-- Moved as a single unit to preserve their relationships
-- Recreated with proper hardlink structure on the destination filesystem
+- Grouped together based on inode relationships.
+- Moved as a single unit to preserve their relationships.
+- Recreated with proper hardlink structure on the destination filesystem.
 
-The script identifies the hardlink relationships and recreates them on the destination filesystem, even though direct hardlinking between different filesystems isn't normally possible.
+My initial implementation of hardlink support worked in most cases, but users reported issues with specific files:
+
+```
+ERROR - Failed to create hardlink: [Errno 18] Invalid cross-device link
+```
+
+This happens because mergerfs can't create hardlinks between files that physically exist on different disks, even though they appear to be in the same mergerfs pool. This isn't a bug but a fundamental limitation, ideally mergerfs would always put hardlinks on the same disk, but this doesn't always happen.
+
+Documentation on this behaviour can be found [here](https://trapexit.github.io/mergerfs/config/rename_and_link/).
+
+The second/final implementation of hardlink support works as follows:
+
+1. Attempts to create the hardlink 'normally' first. (Normally being the move source file and link introduced in v1.3).
+2. If that fails with a cross-device error, uses mergerfs extended attributes to discover the physical location of the source file.
+3. Creates the directory structure on the appropriate physical disk.
+4. Creates the hardlink directly at the physical level, bypassing mergerfs.
+
+For this to work in Docker, you must mount both the mergerfs pools AND the underlying physical disks. If you're using MANS, this is usually just mounting `/mnt/data-disks/` into the container.
 
 > [!NOTE]  
 > Hardlinks are preserved within each move operation. If hardlinked files are moved in separate runs of the script, their hardlink relationship cannot be preserved.
 
 ### Symlink Support
-
 The script provides support for symbolic links (symlinks), handling both absolute and relative paths:
 
 - Automatically identifies symbolic links during the file gathering phase.
