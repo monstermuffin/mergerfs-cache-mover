@@ -68,6 +68,7 @@ def load_config():
         'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', lambda x: x.lower() == 'true'),
         'NOTIFICATION_URLS': ('Settings', 'NOTIFICATION_URLS', lambda x: x.split(',')),
         'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x is not None else False),
+        'LOG_LEVEL': ('Settings', 'LOG_LEVEL', str),
     }
 
     for env_var, (section, key, *convert) in env_mappings.items():
