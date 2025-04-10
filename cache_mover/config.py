@@ -2,7 +2,6 @@ import os
 import yaml
 import logging
 
-# Default configuration settings
 HARDCODED_EXCLUSIONS = [
     'snapraid',
     '.snapraid',
@@ -30,22 +29,11 @@ DEFAULT_CONFIG = {
 }
 
 def get_script_dir():
-    """Get the directory where the script is located."""
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def load_config():
-    """
-    Load and validate configuration from config.yml and environment variables.
-    
-    Returns:
-        dict: The merged and validated configuration
-    
-    Raises:
-        ValueError: If required paths are missing or threshold/target values are invalid
-    """
     config = DEFAULT_CONFIG.copy()
     
-    # Load from config file
     script_dir = get_script_dir()
     config_path = os.path.join(script_dir, 'config.yml')
     if os.path.exists(config_path):
@@ -65,7 +53,6 @@ def load_config():
             settings_update['EXCLUDED_DIRS'] = combined_exclusions
             config['Settings'].update(settings_update)
 
-    # Environment variable mappings
     env_mappings = {
         'CACHE_PATH': ('Paths', 'CACHE_PATH'),
         'BACKING_PATH': ('Paths', 'BACKING_PATH'),
@@ -83,7 +70,6 @@ def load_config():
         'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x is not None else False),
     }
 
-    # Apply environment variables
     for env_var, (section, key, *convert) in env_mappings.items():
         env_value = os.environ.get(env_var)
         if env_value is not None:
@@ -91,13 +77,11 @@ def load_config():
                 env_value = convert[0](env_value)
             config[section][key] = env_value
 
-    # Docker-specific settings
     if os.environ.get('DOCKER_CONTAINER'):
         config['Settings']['AUTO_UPDATE'] = False
         config['Settings']['MAX_LOG_SIZE_MB'] = 100
         config['Settings']['BACKUP_COUNT'] = 1
 
-    # Validate required paths
     required_paths = ['CACHE_PATH', 'BACKING_PATH']
     missing_paths = [path for path in required_paths 
                     if not config['Paths'].get(path)]
@@ -106,7 +90,6 @@ def load_config():
         raise ValueError(f"Required paths not configured: {', '.join(missing_paths)}. "
                         f"Please set via config.yml or environment variables.")
 
-    # Validate threshold and target percentages
     threshold = config['Settings']['THRESHOLD_PERCENTAGE']
     target = config['Settings']['TARGET_PERCENTAGE']
     

@@ -14,7 +14,6 @@ from cache_mover.cleanup import CleanupManager
 from cache_mover import __version__
 
 def display_art():
-    """Display the MANS ASCII art."""
     art = """
 ◢◤◢◤◢◤ ███╗░░░███╗░█████╗░███╗░░██╗░██████╗ ◢◤◢◤◢◤
 ◢◤◢◤◢◤ ████╗░████║██╔══██╗████╗░██║██╔════╝ ◢◤◢◤◢◤
@@ -34,17 +33,14 @@ def main():
     parser.add_argument('--version', action='version', version=f'MergerFS Cache Mover v{__version__}')
     args = parser.parse_args()
 
-    # Load configuration
     try:
         config = load_config()
     except Exception as e:
         print(f"Error loading configuration: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Set up logging
     logger = setup_logging(config, args.console_log)
 
-    # Check if another instance is running
     is_running, running_instances = is_script_running()
     if is_running:
         logger.error("Another instance is already running:")
@@ -52,17 +48,14 @@ def main():
             logger.error(f"  {instance}")
         sys.exit(1)
 
-    # Initialize managers
     notification_mgr = NotificationManager(config)
     cleanup_mgr = CleanupManager(config, args.dry_run)
 
-    # Auto-update if enabled
     if config['Settings'].get('AUTO_UPDATE', False):
         if not auto_update(config):
             logger.warning("Auto-update failed or was skipped")
 
     try:
-        # Check current cache usage
         current_usage, needs_cleanup = cleanup_mgr.check_usage()
 
         if not args.dry_run and current_usage <= cleanup_mgr.threshold:
@@ -71,14 +64,12 @@ def main():
             if not needs_cleanup:
                 sys.exit(0)
 
-        # Set up signal handling
         def signal_handler(signum, frame):
             logger.info("Received signal to stop, finishing current operations...")
             cleanup_mgr.stop()
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        # Run cleanup
         result = cleanup_mgr.run_cleanup()
         if result:
             moved_count, final_usage, total_bytes, elapsed_time, avg_speed = result

@@ -1,7 +1,3 @@
-"""
-Cleanup operations for the cache mover.
-"""
-
 import logging
 from threading import Event
 from .filesystem import (
@@ -11,17 +7,8 @@ from .filesystem import (
 )
 from .mover import move_files_concurrently
 
-class CleanupManager:
-    """Manages cleanup operations for the cache mover."""
-    
+class CleanupManager:    
     def __init__(self, config, dry_run=False):
-        """
-        Initialize the cleanup manager.
-        
-        Args:
-            config (dict): Configuration dictionary
-            dry_run (bool): If True, only simulate operations
-        """
         self.config = config
         self.dry_run = dry_run
         self.stop_event = Event()
@@ -30,12 +17,6 @@ class CleanupManager:
         self.target = config['Settings']['TARGET_PERCENTAGE']
 
     def check_usage(self):
-        """
-        Check current cache usage against threshold.
-        
-        Returns:
-            tuple: (current_usage, needs_cleanup)
-        """
         current_usage = get_fs_usage(self.cache_path)
         needs_cleanup = (current_usage > self.threshold or 
                         (self.threshold == 0 and self.target == 0))
@@ -46,13 +27,6 @@ class CleanupManager:
         return current_usage, needs_cleanup
 
     def run_cleanup(self):
-        """
-        Run the cleanup operation.
-        
-        Returns:
-            tuple: (moved_count, final_usage, total_bytes, elapsed_time, avg_speed) or None if no cleanup needed
-        """
-        # Gather files to move
         files_to_move = gather_files_to_move(self.config)
         regular_files, hardlink_groups, symlinks = files_to_move
         total_files = len(regular_files) + sum(len(group) for group in hardlink_groups.values()) + len(symlinks)
@@ -68,7 +42,6 @@ class CleanupManager:
             f"  - {len(symlinks)} symbolic links"
         )
         
-        # Move files
         moved_count, total_bytes, elapsed_time, avg_speed = move_files_concurrently(
             files_to_move,
             self.config,
@@ -76,7 +49,6 @@ class CleanupManager:
             self.stop_event
         )
 
-        # Clean up empty directories if files were moved
         if not self.dry_run and moved_count > 0:
             removed_dirs = remove_empty_dirs(
                 self.cache_path,
@@ -86,10 +58,8 @@ class CleanupManager:
             if removed_dirs > 0:
                 logging.info(f"Removed {removed_dirs} empty directories")
 
-        # Get final usage
         final_usage = get_fs_usage(self.cache_path)
         return moved_count, final_usage, total_bytes, elapsed_time, avg_speed
 
     def stop(self):
-        """Signal the cleanup operation to stop."""
         self.stop_event.set() 

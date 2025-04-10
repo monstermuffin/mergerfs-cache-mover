@@ -15,16 +15,6 @@ class HybridFormatter(logging.Formatter):
             return f"{self.formatTime(record)} - {record.levelname} - {record.msg}"
 
 def setup_logging(config, console_log):
-    """
-    Set up logging with both file and optional console output.
-    
-    Args:
-        config (dict): Configuration dictionary containing logging settings
-        console_log (bool): Whether to enable console logging
-    
-    Returns:
-        logging.Logger: Configured logger instance
-    """
     log_formatter = HybridFormatter()
     log_handler = RotatingFileHandler(
         config['Paths']['LOG_PATH'],
