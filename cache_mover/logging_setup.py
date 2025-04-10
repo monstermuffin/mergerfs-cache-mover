@@ -24,7 +24,11 @@ def setup_logging(config, console_log):
     log_handler.setFormatter(log_formatter)
     
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    
+    log_level_name = config['Settings'].get('LOG_LEVEL', 'INFO')
+    log_level = getattr(logging, log_level_name, logging.INFO)
+    logger.setLevel(log_level)
+    
     logger.addHandler(log_handler)
 
     if console_log:
