@@ -7,6 +7,7 @@ from threading import Lock, Event
 from time import time
 
 from .filesystem import get_fs_usage, get_fs_free_space, _format_bytes
+from .hardlink_manager import create_hardlink_safe
 
 def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_event=None):
     if stop_event and stop_event.is_set():
@@ -40,7 +41,7 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
                 os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
                 os.chmod(dest_dir, src_dir_stat.st_mode)
             except OSError as e:
-                logging.warning(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
+                logging.info(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
 
         if not dry_run and get_fs_free_space(backing_path) < file_size:
             logging.error(f"Not enough space in backing storage for {src}")
@@ -151,9 +152,11 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
                 else:
                     try:
                         first_dest = os.path.join(dest_base, os.path.relpath(hardlink_group[0], cache_path))
-                        os.link(first_dest, dest)
-                    except OSError as e:
-                        logging.error(f"Failed to create hardlink for {src}: {e}")
+                        if not create_hardlink_safe(first_dest, dest, backing_path):
+                            logging.error(f"Failed to create hardlink for {src}")
+                            return False, 0, 0
+                    except Exception as e:
+                        logging.error(f"Exception creating hardlink for {src}: {e}")
                         return False, 0, 0
 
         if not dry_run:
@@ -229,7 +232,6 @@ def move_symlink(src, dest_base, config, target_reached_lock, dry_run=False, sto
         try:
             rel_target = os.path.relpath(target, cache_path)
             if not rel_target.startswith('..'):
-                target = os.path.join(backing_path, rel_target)
                 target = os.path.join(backing_path, rel_target)
                 logging.debug(f"Symlink target {rel_target} is in cache, updating to point to backing storage: {target}")
         except ValueError:
@@ -356,7 +358,6 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                         moved_count += 1
                     total_bytes_moved += bytes_moved
                     total_time += time_taken
-
                     current_usage = get_fs_usage(cache_path)
                     if current_usage <= target_percentage:
                         if stop_event:

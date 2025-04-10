@@ -1,3 +1,11 @@
+### v1.3.1 - 2025-04-10
+- Refactored hardlink handling:
+  - Added new `hardlink_manager.py` module for specialized hardlink operations.
+  - Fixed "Invalid cross-device link" errors when creating hardlinks across different physical disks.
+  - Implemented discovery of file's physical location using mergerfs extended attributes.
+  - Added fallback mechanism to create hardlinks directly on the same physical disk.
+  - Updated documentation with details about improved hardlink support.
+
 ### v1.3 - 2025-03-27
 - Major codebase restructuring and improvements (assisted by Claude AI):
   - Refactored monolithic script into modular package structure.
