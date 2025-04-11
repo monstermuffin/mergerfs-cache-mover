@@ -47,12 +47,21 @@ class NotificationHandler:
                 else:
                     self.apobj.add(url)
     
-    def _format_bytes(self, bytes: int) -> str:
+    def _format_bytes(self, bytes: int, use_gib: bool = True) -> str:
+        if use_gib:
+            gib = bytes / (1024**3)
+            return f"{gib:.2f}GiB"
+        
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if bytes < 1024:
                 return f"{bytes:.2f}{unit}"
             bytes /= 1024
         return f"{bytes:.2f}PB"
+    
+    def _calculate_percentage(self, used: int, total: int) -> float:
+        if total == 0:
+            return 0.0
+        return (used / total) * 100
         
     def _format_time(self, seconds: float) -> str:
         if seconds < 60:
@@ -100,17 +109,25 @@ class NotificationHandler:
             
         logging.info("Sending completion notification")
         
+        # Calculate cache usage in GiB
+        cache_used = cache_total - cache_free
+        cache_usage = self._calculate_percentage(cache_used, cache_total)
+        
+        # Calculate backing usage in GiB
+        backing_used = backing_total - backing_free
+        backing_usage = self._calculate_percentage(backing_used, backing_total)
+        
         notification_data = {
             'files_moved': files_moved,
-            'space_moved': self._format_bytes(total_bytes),
+            'space_moved': self._format_bytes(total_bytes, use_gib=True),
             'time_str': self._format_time(elapsed_time),
             'avg_speed': avg_speed,
-            'final_cache_usage': final_usage,
-            'cache_free_str': self._format_bytes(cache_free),
-            'cache_total_str': self._format_bytes(cache_total),
+            'final_cache_usage': cache_usage,
+            'cache_free_str': self._format_bytes(cache_free, use_gib=True),
+            'cache_total_str': self._format_bytes(cache_total, use_gib=True),
             'backing_usage': backing_usage,
-            'backing_free_str': self._format_bytes(backing_free),
-            'backing_total_str': self._format_bytes(backing_total),
+            'backing_free_str': self._format_bytes(backing_free, use_gib=True),
+            'backing_total_str': self._format_bytes(backing_total, use_gib=True),
             'backing_path': self.config.backing_path,
             'commit_hash': self.config.commit_hash
         }

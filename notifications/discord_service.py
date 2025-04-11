@@ -8,11 +8,8 @@ class DiscordService:
         self.webhook_url = webhook_url
 
     def _format_bytes(self, bytes: int) -> str:
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if bytes < 1024:
-                return f"{bytes:.2f}{unit}"
-            bytes /= 1024
-        return f"{bytes:.2f}PB"
+        gib = bytes / (1024**3)
+        return f"{gib:.2f}GiB"
 
     def send_completion(self, data: Dict[str, Any]) -> bool:
         embeds = [{
@@ -58,7 +55,8 @@ class DiscordService:
                 {
                     "name": "💾 Backing Status",
                     "value": (f"**Usage:** {data['backing_usage']:.1f}% Used | {100 - data['backing_usage']:.1f}% Free\n"
-                            f"**Space:** {data['backing_free_str']} Free of {data['backing_total_str']} Total"),
+                            f"**Space:** {data['backing_free_str']} Free of {data['backing_total_str']} Total\n"
+                            f"**Path:** {data['backing_path']}"),
                     "inline": False
                 }
             ],
