@@ -20,7 +20,7 @@ def _format_bytes(bytes: int) -> str:
     return f"{bytes:.2f}PB"
 
 def is_excluded(path, excluded_dirs):
-    path_parts = path.split(os.sep)
+    path_parts = [part for part in path.split(os.sep) if part]
     return any(excluded in path_parts for excluded in excluded_dirs)
 
 def get_file_inode(path):
