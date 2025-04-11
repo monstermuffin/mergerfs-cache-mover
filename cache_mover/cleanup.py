@@ -24,6 +24,9 @@ class CleanupManager:
         logging.info(f"Current cache usage: {current_usage:.1f}%")
         logging.info(f"Threshold: {self.threshold}%, Target: {self.target}%")
         
+        if self.threshold == 0 and self.target == 0:
+            logging.info("Both THRESHOLD_PERCENTAGE and TARGET_PERCENTAGE are 0. Cache will be emptied completely.")
+        
         return current_usage, needs_cleanup
 
     def run_cleanup(self):

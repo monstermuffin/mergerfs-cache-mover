@@ -95,7 +95,7 @@ def load_config():
     target = config['Settings']['TARGET_PERCENTAGE']
     
     if threshold == 0 and target == 0:
-        logging.info("Both THRESHOLD_PERCENTAGE and TARGET_PERCENTAGE are 0. Cache will be emptied completely.")
+        config['Settings']['EMPTY_CACHE_MODE'] = True
     elif threshold <= target:
         raise ValueError("THRESHOLD_PERCENTAGE must be greater than TARGET_PERCENTAGE (or both must be 0 to empty cache completely)")
 
