@@ -15,7 +15,7 @@ Settings:
   SCHEDULE: "0 3 * * *" #Cron schedule expression (Docker only - ignored when using systemd/cron)
   LOG_LEVEL: INFO #Log level, use DEBUG for more verbose logging.
   NOTIFICATIONS_ENABLED: false           #apprise notifs
-  NOTIFY_THRESHOLD: true                 #notify on thrreshold not reached
+  NOTIFY_THRESHOLD: true                 #notify on threshold not reached
   NOTIFICATION_URLS:                     #urls https://github.com/caronc/apprise#productivity-based-notifications
     - 'discord://webhook_id/webhook_token'
     - 'slack://hooks/tokenA/tokenB/tokenC'
