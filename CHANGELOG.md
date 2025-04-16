@@ -1,5 +1,40 @@
+### v1.3.1 - 2025-04-10
+- Refactored hardlink handling:
+  - Added new `hardlink_manager.py` module for specialized hardlink operations.
+  - Fixed "Invalid cross-device link" errors when creating hardlinks across different physical disks.
+  - Implemented discovery of file's physical location using mergerfs extended attributes.
+  - Added fallback mechanism to create hardlinks directly on the same physical disk.
+  - Updated documentation with details about improved hardlink support.
+
+### v1.3 - 2025-03-27
+- Major codebase restructuring and improvements (assisted by Claude AI):
+  - Refactored monolithic script into modular package structure.
+  - Split functionality into logical modules:
+    - `filesystem.py`: Core filesystem operations and file gathering.
+    - `mover.py`: File moving and transfer logic.
+    - `cleanup.py`: Cleanup operations management.
+    - `config.py`: Configuration handling.
+    - `logging_setup.py`: Logging configuration.
+    - `notifications.py`: Notification system
+- Enhanced hardlink support:
+  - Added inode-based hardlink detection and grouping.
+  - Implemented preservation of hardlink relationships across filesystems.
+  - Added concurrent processing of hardlink groups.
+  - Improved error handling and cleanup for hardlinked files.
+- Added symlink support:
+  - Handling of both absolute and relative symlinks.
+  - Automatic target path adjustment for moved files.
+  - Path resolution for symlinks within cache directory.
+  - Cleanup and error handling for symlink operations.
+- Improved logging:
+  - Added logging for hardlink operations.
+  - Added logging for symlink operations.
+  - Better error reporting for link-related operations.
+- Updated documentation:
+  - Updated README with new features and examples.
+
 ### v1.2 - 2025-01-24
-  - fix: Speed calulation overhaul
+  - fix: Speed calculation overhaul
   - ci: Release workflow setup/test
 
 ### v1.1 - 2025-01-20

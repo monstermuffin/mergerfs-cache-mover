@@ -16,9 +16,11 @@ services:
       NOTIFICATIONS_ENABLED: True
       NOTIFY_THRESHOLD: True
       NOTIFICATION_URLS: "discord://webhook_id/webhook_token,slack://hooks/tokenA/tokenB/tokenC"
+      LOG_LEVEL: INFO
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
+      - /mnt/data-disks:/mnt/data-disks:rw  # Required for hardlink support
       - /var/log:/var/log:rw
     cap_add:
       - SYS_ADMIN
