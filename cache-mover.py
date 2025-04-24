@@ -26,7 +26,7 @@ def display_art():
 
 def main():
     display_art()
-    
+
     parser = argparse.ArgumentParser(description='MergerFS Cache Mover')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be moved without moving')
     parser.add_argument('--console-log', action='store_true', help='Log to console in addition to file')
@@ -70,7 +70,7 @@ def main():
         signal.signal(signal.SIGTERM, signal_handler)
 
         result = cleanup_mgr.run_cleanup()
-        if result:
+        if not args.dry_run and result:
             moved_count, final_usage, total_bytes, elapsed_time, avg_speed = result
             notification_mgr.notify_completion(
                 moved_count=moved_count,
