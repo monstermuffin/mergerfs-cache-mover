@@ -1,5 +1,8 @@
 import logging
+from typing import Any
+
 import requests
+
 
 # Source https://stackoverflow.com/a/1094933/5209106
 def format_bytes(bytes: int | float, suffix: str = "B") -> str:
@@ -9,7 +12,7 @@ def format_bytes(bytes: int | float, suffix: str = "B") -> str:
         bytes /= 1024
     return f"{bytes:.1f}Yi{suffix}"
 
-def send_webhook(service_name: str, webhook_url: str, payload: Dict[str, Any]) -> bool:
+def send_webhook(service_name: str, webhook_url: str, payload: dict[str, Any]) -> bool:
     try:
         response = requests.post(webhook_url, json=payload)
         response.raise_for_status()
