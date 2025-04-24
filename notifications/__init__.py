@@ -111,7 +111,7 @@ class NotificationHandler:
             'files_moved': files_moved,
             'space_moved': format_bytes(total_bytes),
             'time_str': self._format_time(elapsed_time),
-            'avg_speed': avg_speed,
+            'avg_speed': format_bytes(avg_speed),
             'final_cache_usage': cache_usage,
             'cache_free_str': format_bytes(cache_free),
             'cache_total_str': format_bytes(cache_total),

@@ -369,12 +369,14 @@ def move_files_concurrently(files_to_move, config, dry_run=False, stop_event=Non
                 logging.error(f"Error processing {src}: {e}")
 
     elapsed_time = time() - start_time
-    avg_speed = total_bytes_moved / (1024 * 1024 * elapsed_time) if elapsed_time > 0 else 0
+    avg_speed = total_bytes_moved / elapsed_time if elapsed_time > 0 else 0
 
     if moved_count > 0:
+        # Convert to MB/s for logging
+        mb_per_second = avg_speed / (1024 * 1024)
         logging.info(
             f"Moved {moved_count} files ({_format_bytes(total_bytes_moved)}) "
-            f"in {elapsed_time:.1f}s ({avg_speed:.2f}MB/s)"
+            f"in {elapsed_time:.1f}s ({mb_per_second:.2f} MB/s)"
         )
 
-    return moved_count, total_bytes_moved, elapsed_time, avg_speed 
+    return moved_count, total_bytes_moved, elapsed_time, avg_speed

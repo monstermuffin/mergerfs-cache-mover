@@ -35,7 +35,7 @@ class DiscordService:
                 },
                 {
                     "name": "📈 Transfer Speed",
-                    "value": f"{data['avg_speed']:.1f} MB/s",
+                    "value": f"{data['avg_speed']}/s",
                     "inline": True
                 },
                 {
