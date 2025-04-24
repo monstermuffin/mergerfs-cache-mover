@@ -79,6 +79,8 @@ def main():
                 elapsed_time=elapsed_time,
                 avg_speed=avg_speed
             )
+        if args.dry_run and result:
+            logger.info("DRY RUN: Skipping notification")
 
     except Exception as e:
         logger.error(f"Error during execution: {e}")
