@@ -1,13 +1,14 @@
-from datetime import datetime
-from typing import Dict, List, Any
+from datetime import datetime, timezone
+from typing import Any
 
 from .util import format_bytes, send_webhook
+
 
 class DiscordService:
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url
 
-    def send_completion(self, data: Dict[str, Any]) -> bool:
+    def send_completion(self, data: dict[str, Any]) -> bool:
         embeds = [{
             "title": "🔄 Cache Move Complete",
             "color": 0x00ff00,
@@ -59,12 +60,12 @@ class DiscordService:
             "footer": {
                 "text": f"Version: {data['commit_hash'][:7] if data['commit_hash'] else 'unknown'}"
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }]
 
         return send_webhook("Discord", self.webhook_url, {"embeds": embeds})
 
-    def send_error(self, error_msg: str, commit_hash: str = None) -> bool:
+    def send_error(self, error_msg: str, commit_hash: str | None = None) -> bool:
         embeds = [{
             "title": "❌ Cache Mover Error",
             "color": 0xff0000,
@@ -72,25 +73,34 @@ class DiscordService:
             "footer": {
                 "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }]
 
         return send_webhook("Discord", self.webhook_url, {"embeds": embeds})
 
-    def send_threshold_not_met(self, current_usage: float, threshold: float, commit_hash: str = None,
-                                  cache_free: int = None, cache_total: int = None,
-                                  backing_free: int = None, backing_total: int = None) -> bool:
+    def send_threshold_not_met(
+        self,
+        current_usage: float,
+        threshold: float,
+        commit_hash: str | None = None,
+        cache_free: int | None = None,
+        cache_total: int | None = None,
+        backing_free: int | None = None,
+        backing_total: int | None = None,
+    ) -> bool:
         description = f"Current cache usage ({current_usage:.1f}%) is below threshold ({threshold:.1f}%). No action required."
 
         if all(x is not None for x in [cache_free, cache_total, backing_free, backing_total]):
+            # The type checker doesn't recognise that the condition above guarantees these variables won't be None, hence this hack
+            assert cache_free is not None ; assert cache_total is not None ; assert backing_free is not None ; assert backing_total is not None  # noqa: E702
             cache_free_str = format_bytes(cache_free)
             cache_total_str = format_bytes(cache_total)
             backing_free_str = format_bytes(backing_free)
             backing_total_str = format_bytes(backing_total)
 
-            description += f"\n\n**💽 Cache Status**\n"
+            description += "\n\n**💽 Cache Status**\n"
             description += f"Space: {cache_free_str} Free of {cache_total_str} Total\n"
-            description += f"\n**💾 Backing Status**\n"
+            description += "\n**💾 Backing Status**\n"
             description += f"Space: {backing_free_str} Free of {backing_total_str} Total"
 
         embeds = [{
@@ -100,14 +110,19 @@ class DiscordService:
             "footer": {
                 "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }]
 
         return send_webhook("Discord", self.webhook_url, {"embeds": embeds})
 
-    def send_empty_cache(self, cache_free: int, cache_total: int,
-                    backing_free: int, backing_total: int,
-                    commit_hash: str = None) -> bool:
+    def send_empty_cache(
+        self,
+        cache_free: int,
+        cache_total: int,
+        backing_free: int,
+        backing_total: int,
+        commit_hash: str | None = None,
+    ) -> bool:
         embeds = [{
             "title": "ℹ️ Cache Empty Report",
             "color": 0x3498db,
@@ -121,6 +136,6 @@ class DiscordService:
             "footer": {
                 "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }]
         return send_webhook("Discord", self.webhook_url, {"embeds": embeds})

@@ -1,7 +1,7 @@
 import apprise
 import logging
 import platform
-from typing import List, Optional, Dict, Any
+from typing import Any
 from dataclasses import dataclass
 from urllib.parse import urlparse
 from .discord_service import DiscordService
@@ -10,14 +10,14 @@ from .slack_service import SlackService
 @dataclass
 class NotificationConfig:
     enabled: bool
-    urls: List[str]
+    urls: list[str]
     hostname: str = platform.node()
-    commit_hash: Optional[str] = None
+    commit_hash: str | None = None
     notify_threshold: bool = False
-    backing_path: Optional[str] = None
+    backing_path: str | None = None
 
 class NotificationHandler:
-    def __init__(self, config: dict, commit_hash: Optional[str] = None):
+    def __init__(self, config: dict[str, Any], commit_hash: str | None = None):
         settings = config.get('Settings', {})
 
         self.config = NotificationConfig(
@@ -29,8 +29,8 @@ class NotificationHandler:
         )
         
         self.apobj = None
-        self.discord_services = []
-        self.slack_services = []
+        self.discord_services: list[DiscordService] = []
+        self.slack_services: list[SlackService] = []
         
         if self.config.enabled and self.config.urls:
             self.apobj = apprise.Apprise()
@@ -45,8 +45,8 @@ class NotificationHandler:
                     if webhook_url:
                         self.slack_services.append(SlackService(webhook_url))
                 else:
-                    self.apobj.add(url)
-    
+                    self.apobj.add(url) # type: ignore
+
     def _format_bytes(self, bytes: int, use_gib: bool = True) -> str:
         if use_gib:
             gib = bytes / (1024**3)
@@ -73,7 +73,7 @@ class NotificationHandler:
             hours = seconds / 3600
             return f"{hours:.1f} hours"
 
-    def _convert_discord_url(self, apprise_url: str) -> Optional[str]:
+    def _convert_discord_url(self, apprise_url: str) -> str | None:
         try:
             parsed = urlparse(apprise_url)
             if parsed.scheme != 'discord':
@@ -85,7 +85,7 @@ class NotificationHandler:
             logging.error(f"Failed to convert Discord Apprise URL: {str(e)}")
             return None
             
-    def _convert_slack_url(self, apprise_url: str) -> Optional[str]:
+    def _convert_slack_url(self, apprise_url: str) -> str | None:
         try:
             parsed = urlparse(apprise_url)
             if parsed.scheme != 'slack':
@@ -155,7 +155,7 @@ class NotificationHandler:
             )
             
             try:
-                if not self.apobj.notify(
+                if not self.apobj.notify( # type: ignore
                     title="Cache Move Complete",
                     body=message,
                     body_format=apprise.NotifyFormat.MARKDOWN
@@ -185,7 +185,7 @@ class NotificationHandler:
             message = f"❌ Cache Mover Error\n\n**Error Details:** {error_msg}"
             
             try:
-                if not self.apobj.notify(
+                if not self.apobj.notify( # type: ignore
                     title="Cache Mover Error",
                     body=message,
                     body_format=apprise.NotifyFormat.MARKDOWN
@@ -197,9 +197,15 @@ class NotificationHandler:
                 
         return success
 
-    def notify_threshold_not_met(self, current_usage: float, threshold: float, 
-                            cache_free: int = None, cache_total: int = None,
-                            backing_free: int = None, backing_total: int = None) -> bool:
+    def notify_threshold_not_met(
+        self,
+        current_usage: float,
+        threshold: float,
+        cache_free: int | None = None,
+        cache_total: int | None = None,
+        backing_free: int | None = None,
+        backing_total: int | None = None,
+    ) -> bool:
         if not self.config.enabled or not self.config.notify_threshold:
             return False
                 
@@ -225,13 +231,15 @@ class NotificationHandler:
             )
 
             if all(x is not None for x in [cache_free, cache_total, backing_free, backing_total]):
+                # The type checker doesn't recognise that the condition above guarantees these variables won't be None, hence this hack
+                assert cache_free is not None ; assert cache_total is not None ; assert backing_free is not None ; assert backing_total is not None  # noqa: E702
                 message += (f"\n\n💽 Cache Status\n"
                         f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
                         f"\n💾 Backing Status\n"
                         f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total")
             
             try:
-                if not self.apobj.notify(
+                if not self.apobj.notify( # type: ignore
                     title="Cache Usage Update",
                     body=message,
                     body_format=apprise.NotifyFormat.MARKDOWN
@@ -277,7 +285,7 @@ class NotificationHandler:
         # Send via Apprise
         if self.apobj:
             try:
-                self.apobj.notify(
+                self.apobj.notify( # type: ignore
                     title="Cache Empty Report",
                     body=message,
                     body_format=apprise.NotifyFormat.MARKDOWN
