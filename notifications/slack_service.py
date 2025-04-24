@@ -1,14 +1,10 @@
-import logging
 from typing import Dict, List, Any
-import requests
+
+from .util import format_bytes, send_webhook
 
 class SlackService:
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url
-
-    def _format_bytes(self, bytes: int) -> str:
-        gib = bytes / (1024**3)
-        return f"{gib:.2f}GiB"
 
     def send_completion(self, data: Dict[str, Any]) -> bool:
         blocks = [
@@ -53,7 +49,7 @@ class SlackService:
                 ]
             })
 
-        return self._send_webhook({"blocks": blocks})
+        return send_webhook("Slack", self.webhook_url, {"blocks": blocks})
 
     def send_error(self, error_msg: str, commit_hash: str = None) -> bool:
         blocks = [
@@ -84,7 +80,7 @@ class SlackService:
                 ]
             })
 
-        return self._send_webhook({"blocks": blocks})
+        return send_webhook("Slack", self.webhook_url, {"blocks": blocks})
 
     def send_threshold_not_met(self, current_usage: float, threshold: float, commit_hash: str = None,
                                   cache_free: int = None, cache_total: int = None,
@@ -92,10 +88,10 @@ class SlackService:
         message = f"Current cache usage ({current_usage:.1f}%) is below threshold ({threshold:.1f}%). No action required."
 
         if all(x is not None for x in [cache_free, cache_total, backing_free, backing_total]):
-            cache_free_str = self._format_bytes(cache_free)
-            cache_total_str = self._format_bytes(cache_total)
-            backing_free_str = self._format_bytes(backing_free)
-            backing_total_str = self._format_bytes(backing_total)
+            cache_free_str = format_bytes(cache_free)
+            cache_total_str = format_bytes(cache_total)
+            backing_free_str = format_bytes(backing_free)
+            backing_total_str = format_bytes(backing_total)
 
             message += f"\n\n*💽 Cache Status*\n"
             message += f"Space: {cache_free_str} Free of {cache_total_str} Total\n"
@@ -130,8 +126,8 @@ class SlackService:
                 ]
             })
 
-        return self._send_webhook({"blocks": blocks})
-    
+        return send_webhook("Slack", self.webhook_url, {"blocks": blocks})
+
     def send_empty_cache(self, cache_free: int, cache_total: int,
                     backing_free: int, backing_total: int,
                     commit_hash: str = None) -> bool:
@@ -150,9 +146,9 @@ class SlackService:
                     "text": (
                         "Empty cache mode activated but no files found!\n\n"
                         f"💽 Cache Status\n"
-                        f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
+                        f"Space: {format_bytes(cache_free)} Free of {format_bytes(cache_total)} Total\n"
                         f"\n💾 Backing Status\n"
-                        f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total"
+                        f"Space: {format_bytes(backing_free)} Free of {format_bytes(backing_total)} Total"
                     )
                 }
             }
@@ -165,13 +161,4 @@ class SlackService:
                     "text": f"Version: {commit_hash[:7]}"
                 }]
             })
-        return self._send_webhook({"blocks": blocks})
-
-    def _send_webhook(self, payload: Dict[str, Any]) -> bool:
-        try:
-            response = requests.post(self.webhook_url, json=payload)
-            response.raise_for_status()
-            return True
-        except Exception as e:
-            logging.error(f"Failed to send Slack webhook: {str(e)}")
-            return False
+        return send_webhook("Slack", self.webhook_url, {"blocks": blocks})

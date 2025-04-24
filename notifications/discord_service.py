@@ -1,15 +1,11 @@
-import logging
 from datetime import datetime
 from typing import Dict, List, Any
-import requests
+
+from .util import format_bytes, send_webhook
 
 class DiscordService:
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url
-
-    def _format_bytes(self, bytes: int) -> str:
-        gib = bytes / (1024**3)
-        return f"{gib:.2f}GiB"
 
     def send_completion(self, data: Dict[str, Any]) -> bool:
         embeds = [{
@@ -65,8 +61,8 @@ class DiscordService:
             },
             "timestamp": datetime.utcnow().isoformat()
         }]
-        
-        return self._send_webhook({"embeds": embeds})
+
+        return send_webhook("Discord", self.webhook_url, {"embeds": embeds})
 
     def send_error(self, error_msg: str, commit_hash: str = None) -> bool:
         embeds = [{
@@ -78,8 +74,8 @@ class DiscordService:
             },
             "timestamp": datetime.utcnow().isoformat()
         }]
-        
-        return self._send_webhook({"embeds": embeds})
+
+        return send_webhook("Discord", self.webhook_url, {"embeds": embeds})
 
     def send_threshold_not_met(self, current_usage: float, threshold: float, commit_hash: str = None,
                                   cache_free: int = None, cache_total: int = None,
@@ -87,10 +83,10 @@ class DiscordService:
         description = f"Current cache usage ({current_usage:.1f}%) is below threshold ({threshold:.1f}%). No action required."
 
         if all(x is not None for x in [cache_free, cache_total, backing_free, backing_total]):
-            cache_free_str = self._format_bytes(cache_free)
-            cache_total_str = self._format_bytes(cache_total)
-            backing_free_str = self._format_bytes(backing_free)
-            backing_total_str = self._format_bytes(backing_total)
+            cache_free_str = format_bytes(cache_free)
+            cache_total_str = format_bytes(cache_total)
+            backing_free_str = format_bytes(backing_free)
+            backing_total_str = format_bytes(backing_total)
 
             description += f"\n\n**💽 Cache Status**\n"
             description += f"Space: {cache_free_str} Free of {cache_total_str} Total\n"
@@ -106,9 +102,9 @@ class DiscordService:
             },
             "timestamp": datetime.utcnow().isoformat()
         }]
-        
-        return self._send_webhook({"embeds": embeds})
-    
+
+        return send_webhook("Discord", self.webhook_url, {"embeds": embeds})
+
     def send_empty_cache(self, cache_free: int, cache_total: int,
                     backing_free: int, backing_total: int,
                     commit_hash: str = None) -> bool:
@@ -118,22 +114,13 @@ class DiscordService:
             "description": (
                 "Empty cache mode activated but no files found!\n\n"
                 f"💽 Cache Status\n"
-                f"Space: {self._format_bytes(cache_free)} Free of {self._format_bytes(cache_total)} Total\n"
+                f"Space: {format_bytes(cache_free)} Free of {format_bytes(cache_total)} Total\n"
                 f"\n💾 Backing Status\n"
-                f"Space: {self._format_bytes(backing_free)} Free of {self._format_bytes(backing_total)} Total"
+                f"Space: {format_bytes(backing_free)} Free of {format_bytes(backing_total)} Total"
             ),
             "footer": {
                 "text": f"Version: {commit_hash[:7] if commit_hash else 'unknown'}"
             },
             "timestamp": datetime.utcnow().isoformat()
         }]
-        return self._send_webhook({"embeds": embeds})
-
-    def _send_webhook(self, payload: Dict[str, Any]) -> bool:
-        try:
-            response = requests.post(self.webhook_url, json=payload)
-            response.raise_for_status()
-            return True
-        except Exception as e:
-            logging.error(f"Failed to send Discord webhook: {str(e)}")
-            return False
+        return send_webhook("Discord", self.webhook_url, {"embeds": embeds})
