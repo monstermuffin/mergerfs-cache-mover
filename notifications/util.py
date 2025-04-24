@@ -8,9 +8,9 @@ import requests
 def format_bytes(bytes: int | float, suffix: str = "B") -> str:
     for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
         if abs(bytes) < 1024:
-            return f"{bytes:3.1f}{unit}{suffix}"
+            return f"{bytes:3.1f} {unit}{suffix}"
         bytes /= 1024
-    return f"{bytes:.1f}Yi{suffix}"
+    return f"{bytes:.1f} Yi{suffix}"
 
 def send_webhook(service_name: str, webhook_url: str, payload: dict[str, Any]) -> bool:
     try:
