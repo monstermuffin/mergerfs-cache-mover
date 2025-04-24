@@ -1,9 +1,13 @@
 import logging
 import requests
 
-def format_bytes(self, bytes: int) -> str:
-    gib = bytes / (1024**3)
-    return f"{gib:.2f}GiB"
+# Source https://stackoverflow.com/a/1094933/5209106
+def format_bytes(bytes: int | float, suffix: str = "B") -> str:
+    for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
+        if abs(bytes) < 1024:
+            return f"{bytes:3.1f}{unit}{suffix}"
+        bytes /= 1024
+    return f"{bytes:.1f}Yi{suffix}"
 
 def send_webhook(service_name: str, webhook_url: str, payload: Dict[str, Any]) -> bool:
     try:
