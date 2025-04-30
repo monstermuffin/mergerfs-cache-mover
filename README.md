@@ -213,7 +213,7 @@ To see how to configure your service, please see the [Approise docs.](https://gi
 ### Threshold Notification
 `NOTIFY_THRESHOLD` enables sending a notification when a run was started, but no action was taken due to `THRESHOLD_PERCENTAGE` not being reached. If this is not defined it is defaulted to `false`.
 
-![](images/2.png)
+![](images/cache_move.png)
 
 ### Notification Types
 
