@@ -1,3 +1,9 @@
+### v1.3.2 - 2025-04-30
+- Merged misc fixes from @tigattack - Thanks!
+  - Skip notif for dry run and add log line.
+  - Various improvements to notifications.
+- Minor docs improvements.
+
 ### v1.3.1 - 2025-04-10
 - Refactored hardlink handling:
   - Added new `hardlink_manager.py` module for specialized hardlink operations.
