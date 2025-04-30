@@ -208,12 +208,12 @@ To see how to configure your service, please see the [Approise docs.](https://gi
 > [!NOTE]
 > I have not tested anything but Discord/Slack webhooks at the time of writing. If you would like rich formatting for a specific service, feel free to raise an issue or PR.
 
-![](images/1.png)
+![](images/cache_move.png)
 
 ### Threshold Notification
 `NOTIFY_THRESHOLD` enables sending a notification when a run was started, but no action was taken due to `THRESHOLD_PERCENTAGE` not being reached. If this is not defined it is defaulted to `false`.
 
-![](images/cache_move.png)
+![](images/2.png)
 
 ### Notification Types
 
