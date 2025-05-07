@@ -9,6 +9,44 @@ from time import time
 from .filesystem import get_fs_usage, get_fs_free_space, _format_bytes
 from .hardlink_manager import create_hardlink_safe
 
+def makedirs_preserve_stats(src_dir, dest_dir): # dir tree perm fix attempt v1.3.3
+    if not src_dir or not dest_dir:
+        logging.warning("Invalid directory paths provided")
+        return
+        
+    if os.path.exists(dest_dir):
+        return
+        
+    dirs_to_create = []
+    current_dir = dest_dir
+    while not os.path.exists(current_dir):
+        dirs_to_create.append(current_dir)
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir: # root dir reached
+            break
+        current_dir = parent_dir
+    
+    for new_dir in reversed(dirs_to_create):
+        try:
+            os.makedirs(new_dir, exist_ok=True)
+            
+            try:
+                rel_path = os.path.relpath(new_dir, os.path.dirname(dest_dir))
+                src_path = os.path.normpath(os.path.join(os.path.dirname(src_dir), rel_path))
+                
+                if os.path.exists(src_path):
+                    src_stat = os.stat(src_path)
+                    os.chown(new_dir, src_stat.st_uid, src_stat.st_gid)
+                    os.chmod(new_dir, src_stat.st_mode)
+                    logging.debug(f"Set permissions on {new_dir} from {src_path}")
+                else:
+                    logging.debug(f"Source directory does not exist: {src_path}")
+            except (OSError, ValueError) as e:
+                logging.warning(f"Failed to calculate or access source path for {new_dir}: {e}")
+        except OSError as e:
+            logging.error(f"Failed to create or set permissions for {new_dir}: {e}")
+            raise
+
 def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_event=None):
     if stop_event and stop_event.is_set():
         return False, 0, 0
@@ -34,14 +72,7 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
         logging.debug(f"Source file {src} permissions: mode={oct(stat.S_IMODE(src_stat.st_mode))}, uid={src_stat.st_uid}, gid={src_stat.st_gid}")
 
         if not dry_run and not os.path.exists(dest_dir):
-            os.makedirs(dest_dir, exist_ok=True)
-            src_dir = os.path.dirname(src)
-            try:
-                src_dir_stat = os.stat(src_dir)
-                os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
-                os.chmod(dest_dir, src_dir_stat.st_mode)
-            except OSError as e:
-                logging.info(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
+            makedirs_preserve_stats(os.path.dirname(src), dest_dir)
 
         if not dry_run and get_fs_free_space(backing_path) < file_size:
             logging.error(f"Not enough space in backing storage for {src}")
@@ -132,14 +163,7 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
             dest_dir = os.path.dirname(dest)
 
             if not dry_run and not os.path.exists(dest_dir):
-                os.makedirs(dest_dir, exist_ok=True)
-                src_dir = os.path.dirname(src)
-                try:
-                    src_dir_stat = os.stat(src_dir)
-                    os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
-                    os.chmod(dest_dir, src_dir_stat.st_mode)
-                except OSError as e:
-                    logging.info(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
+                makedirs_preserve_stats(os.path.dirname(src), dest_dir)
 
             if not dry_run:
                 if src == hardlink_group[0]:
@@ -238,14 +262,7 @@ def move_symlink(src, dest_base, config, target_reached_lock, dry_run=False, sto
             pass
 
         if not dry_run and not os.path.exists(dest_dir):
-            os.makedirs(dest_dir, exist_ok=True)
-            src_dir = os.path.dirname(src)
-            try:
-                src_dir_stat = os.stat(src_dir)
-                os.chown(dest_dir, src_dir_stat.st_uid, src_dir_stat.st_gid)
-                os.chmod(dest_dir, src_dir_stat.st_mode)
-            except OSError as e:
-                logging.info(f"Failed to set directory ownership/permissions for {dest_dir}: {e}")
+            makedirs_preserve_stats(os.path.dirname(src), dest_dir)
 
         if not dry_run:
             try:
