@@ -24,7 +24,8 @@ DEFAULT_CONFIG = {
         'SCHEDULE': '0 3 * * *',
         'NOTIFICATIONS_ENABLED': False,
         'NOTIFICATION_URLS': [],
-        'NOTIFY_THRESHOLD': False
+        'NOTIFY_THRESHOLD': False,
+        'LOG_LEVEL': 'INFO'
     }
 }
 
@@ -51,6 +52,10 @@ def load_config():
             
             settings_update = file_config.get('Settings', {})
             settings_update['EXCLUDED_DIRS'] = combined_exclusions
+            
+            if 'LOG_LEVEL' in settings_update:
+                settings_update['LOG_LEVEL'] = str(settings_update['LOG_LEVEL']).strip().upper()
+            
             config['Settings'].update(settings_update)
 
     env_mappings = {
