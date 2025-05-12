@@ -26,14 +26,12 @@ def setup_logging(config, console_log):
     logger = logging.getLogger()
     
     log_level_name = str(config['Settings'].get('LOG_LEVEL', 'INFO')).upper()
-    valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
     
-    if log_level_name not in valid_levels:
+    if log_level_name not in logging._nameToLevel:
         logging.warning(f"Invalid log level '{log_level_name}', defaulting to INFO")
         log_level_name = 'INFO'
     
-    log_level = getattr(logging, log_level_name)
-    logger.setLevel(log_level)
+    logger.setLevel(log_level_name)
     
     logger.addHandler(log_handler)
 
