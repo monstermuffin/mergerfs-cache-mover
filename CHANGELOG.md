@@ -1,3 +1,7 @@
+### v1.3.3 - 2025-05-12
+- Fixed issue where directories created on the backing storage could have root ownership with nested directories.
+- Improved logging level validation (thanks @tigattack).
+
 ### v1.3.2 - 2025-04-30
 - Merged misc fixes from @tigattack - Thanks!
   - Skip notif for dry run and add log line.
