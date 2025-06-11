@@ -30,11 +30,12 @@ def main():
     parser = argparse.ArgumentParser(description='MergerFS Cache Mover')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be moved without moving')
     parser.add_argument('--console-log', action='store_true', help='Log to console in addition to file')
+    parser.add_argument('--config', help='Path to config)')
     parser.add_argument('--version', action='version', version=f'MergerFS Cache Mover v{__version__}')
     args = parser.parse_args()
 
     try:
-        config = load_config()
+        config = load_config(args.config)
     except Exception as e:
         print(f"Error loading configuration: {e}", file=sys.stderr)
         sys.exit(1)

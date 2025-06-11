@@ -32,13 +32,19 @@ DEFAULT_CONFIG = {
 def get_script_dir():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def load_config():
+def load_config(config_path=None):
     config = DEFAULT_CONFIG.copy()
     
-    script_dir = get_script_dir()
-    config_path = os.path.join(script_dir, 'config.yml')
-    if os.path.exists(config_path):
-        with open(config_path, 'r') as config_file:
+    if config_path:
+        if not os.path.exists(config_path):
+            raise ValueError(f"Configuration file not found: {config_path}")
+        final_config_path = config_path
+    else:
+        script_dir = get_script_dir()
+        final_config_path = os.path.join(script_dir, 'config.yml')
+    
+    if os.path.exists(final_config_path):
+        with open(final_config_path, 'r') as config_file:
             file_config = yaml.safe_load(config_file)
             config['Paths'].update(file_config.get('Paths', {}))
             

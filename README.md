@@ -277,7 +277,12 @@ You can also specify `--dry-run`
 sudo python3 cache-mover.py --dry-run --console-log
 ```
 
-Of course, this is meant to be run automatically....
+### Custom Configuration File Location
+By default, the script looks for `config.yml` in the same directory. You can specify a custom configuration file location using the `--config` option:
+
+```shell
+sudo python3 cache-mover.py --config /etc/cache-mover/config.yml --console-log
+```
 
 ## Automated Execution
 Use either a `systemd` timer or Crontab entry. I have been moving from crontab to `systemd` timers myself, but you live your life how you see fit.
