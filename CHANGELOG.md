@@ -1,3 +1,7 @@
+### v1.3.4 - 2025-06-12
+- Added custom config file location support. (Issue #28)
+- Misc package bumps.
+
 ### v1.3.3 - 2025-05-12
 - Fixed issue where directories created on the backing storage could have root ownership with nested directories.
 - Improved logging level validation (thanks @tigattack).
