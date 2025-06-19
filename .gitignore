@@ -5,3 +5,6 @@ config.yml
 notifications_old.py
 .vscode/
 test_*.py
+*.md
+!README.md
+*eri*.py
