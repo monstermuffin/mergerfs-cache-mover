@@ -215,6 +215,7 @@ To see how to configure your service, please see the [Approise docs.](https://gi
 
 > [!NOTE]
 > Notifications are not sent if the script is run with `--dry-run` regardless of the `NOTIFY_THRESHOLD` setting.
+
 ![](images/2.png)
 
 ### Notification Types
