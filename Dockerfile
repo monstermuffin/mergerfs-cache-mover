@@ -24,4 +24,4 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD test -f /var/run/crond.pid && ps -p $(cat /var/run/crond.pid) -o comm= | grep -q '^cron$' || exit 1
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["docker-entrypoint.sh"]
