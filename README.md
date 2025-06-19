@@ -213,6 +213,8 @@ To see how to configure your service, please see the [Approise docs.](https://gi
 ### Threshold Notification
 `NOTIFY_THRESHOLD` enables sending a notification when a run was started, but no action was taken due to `THRESHOLD_PERCENTAGE` not being reached. If this is not defined it is defaulted to `false`.
 
+> [!NOTE]
+> Notifications are not sent if the script is run with `--dry-run` regardless of the `NOTIFY_THRESHOLD` setting.
 ![](images/2.png)
 
 ### Notification Types
