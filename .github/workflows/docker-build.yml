@@ -4,8 +4,16 @@ on:
   workflow_dispatch:
   push:
     branches: [ main, dev, rework ]
+    paths-ignore:
+      - '**.md'
+      - 'images/**'
+      - 'LICENSE'
   pull_request:
     branches: [ main, dev, rework ]
+    paths-ignore:
+      - '**.md'
+      - 'images/**'
+      - 'LICENSE'
 
 env:
   REGISTRY: ghcr.io
