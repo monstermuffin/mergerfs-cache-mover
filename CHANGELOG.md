@@ -2,6 +2,7 @@
 - Fixed issue where empty cache mode would not send notifications if NOTIFY_THRESHOLD was enabled. (Issue #30)
 - Updated docs.
 - Fixed Dockerfile to use CMD instead of ENTRYPOINT.
+- CI: Improved build.
 - Misc package bumps.
 
 ### v1.3.4 - 2025-06-12
