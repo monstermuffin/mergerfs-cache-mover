@@ -1,3 +1,9 @@
+### v1.3.5 - 2025-06-20
+- Fixed issue where empty cache mode would not send notifications if NOTIFY_THRESHOLD was enabled. (Issue #30)
+- Updated docs.
+- Fixed Dockerfile to use CMD instead of ENTRYPOINT.
+- Misc package bumps.
+
 ### v1.3.4 - 2025-06-12
 - Added custom config file location support. (Issue #28)
 - Misc package bumps.
