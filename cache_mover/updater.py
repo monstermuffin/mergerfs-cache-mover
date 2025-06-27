@@ -11,10 +11,20 @@ def set_git_dir():
     script_dir = get_script_dir()
     os.environ['GIT_DIR'] = os.path.join(script_dir, '.git')
 
+def is_git_repository():
+    script_dir = get_script_dir()
+    git_dir = os.path.join(script_dir, '.git')
+    return os.path.exists(git_dir)
+
 def get_current_commit_hash():
     # Skip git operations in Docker containers
     if os.environ.get('DOCKER_CONTAINER'):
         logging.debug("Running in Docker container, skipping git commit hash check")
+        return None
+
+    # Skip if not in a git repository
+    if not is_git_repository():
+        logging.info("Not in git repository, skipping commit hash check")
         return None
 
     set_git_dir()
