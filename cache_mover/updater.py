@@ -5,19 +5,13 @@ import subprocess
 import requests
 
 def get_script_dir():
-    """Get the directory where the script is located."""
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def set_git_dir():
-    """Set the GIT_DIR environment variable."""
     script_dir = get_script_dir()
     os.environ['GIT_DIR'] = os.path.join(script_dir, '.git')
 
 def get_current_commit_hash():
-    """
-    Get the current git commit hash.
-    Returns None in Docker containers or if unable to get hash.
-    """
     # Skip git operations in Docker containers
     if os.environ.get('DOCKER_CONTAINER'):
         logging.debug("Running in Docker container, skipping git commit hash check")
@@ -33,7 +27,6 @@ def get_current_commit_hash():
         return None
 
 def run_git_command(command, error_message):
-    """Run a git command and handle errors."""
     # Skip git operations in Docker containers
     if os.environ.get('DOCKER_CONTAINER'):
         logging.debug("Running in Docker container, skipping git operations")
@@ -48,16 +41,6 @@ def run_git_command(command, error_message):
         raise
 
 def auto_update(config):
-    """
-    Check for updates and automatically update the script if available.
-    Skips update check in Docker containers.
-    
-    Args:
-        config (dict): Configuration dictionary
-    
-    Returns:
-        bool: True if update was successful or not needed, False if update failed
-    """
     # Skip auto-update in Docker containers
     if os.environ.get('DOCKER_CONTAINER'):
         logging.debug("Running in Docker container, auto-update disabled")
