@@ -419,3 +419,12 @@ If you would like to contribute to the project, please raise an issue or PR. If 
 ## Fin.
 Cheers, if you have any issues please do not hesitate to raise an issue.
 ✌️
+
+## Star History
+<a href="https://www.star-history.com/#MonsterMuffin/mergerfs-cache-mover&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=MonsterMuffin/mergerfs-cache-mover&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=MonsterMuffin/mergerfs-cache-mover&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=MonsterMuffin/mergerfs-cache-mover&type=Date" />
+ </picture>
+</a>
