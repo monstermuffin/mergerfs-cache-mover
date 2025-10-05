@@ -22,3 +22,5 @@ Settings:
 
   EXCLUDED_DIRS: #Dirs to exclude.
     - snapraid
+
+  # INSTANCE_ID: tier01  #For running multiple instances, read README.md for more info, leave blank if unsure.

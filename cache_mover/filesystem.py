@@ -108,13 +108,17 @@ def remove_empty_dirs(path, excluded_dirs, dry_run=False):
                 
     return removed
 
-def is_script_running():
+def is_script_running(instance_id=None):
     current_process = psutil.Process()
     current_script = os.path.abspath(__file__)
     script_name = os.path.basename(current_script)
     
+    # set instance_id env var for process
+    if instance_id:
+        os.environ['CACHE_MOVER_INSTANCE_ID'] = instance_id
+    
     if os.environ.get('DOCKER_CONTAINER'):
-        container_processes = [p for p in psutil.process_iter(['pid', 'name', 'cmdline']) 
+        container_processes = [p for p in psutil.process_iter(['pid', 'name', 'cmdline', 'environ']) 
                              if p.pid != current_process.pid]
         running_instances = []
         
@@ -124,20 +128,40 @@ def is_script_running():
                     cmdline = process.cmdline()
                     if len(cmdline) >= 2 and script_name in cmdline[-1]:
                         if not is_child_process(current_process, process):
-                            running_instances.append(' '.join(cmdline))
+                            # block same instance_id
+                            if instance_id:
+                                try:
+                                    proc_env = process.environ()
+                                    proc_instance_id = proc_env.get('CACHE_MOVER_INSTANCE_ID')
+                                    if proc_instance_id == instance_id:
+                                        running_instances.append(f"{' '.join(cmdline)} [instance: {instance_id}]")
+                                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                                    pass
+                            else:
+                                running_instances.append(' '.join(cmdline))
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
                 
         return bool(running_instances), running_instances
     
-    for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+    for process in psutil.process_iter(['pid', 'name', 'cmdline', 'environ']):
         if process.pid != current_process.pid:
             try:
                 if process.name() == 'python' or process.name() == 'python3':
                     cmdline = process.cmdline()
                     if len(cmdline) >= 2 and script_name in cmdline[-1]:
                         if not is_child_process(current_process, process):
-                            return True, [' '.join(cmdline)]
+                            # block same instance_id
+                            if instance_id:
+                                try:
+                                    proc_env = process.environ()
+                                    proc_instance_id = proc_env.get('CACHE_MOVER_INSTANCE_ID')
+                                    if proc_instance_id == instance_id:
+                                        return True, [f"{' '.join(cmdline)} [instance: {instance_id}]"]
+                                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                                    pass
+                            else:
+                                return True, [' '.join(cmdline)]
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
     return False, []

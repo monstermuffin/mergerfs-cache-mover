@@ -41,6 +41,7 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
+- `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
 
 > [!WARNING]  
 > This script must be run as root (using sudo) for the following reasons:
@@ -102,6 +103,7 @@ All configuration options can be set via environment variables:
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
+- `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
 
 ### Using Config File
 You can optionally mount a `config.yml` into the container as so:
@@ -409,6 +411,17 @@ Settings:
 
 ### Auto-Update
 If enabled the script checks for updates at runtime from the GitHub and automatically updates itself if a new version is available. There is an option for checking a specific branch, unless you have a specific reason to, this should stay as `main`.
+
+### Multiple Instances
+By default, the script prevents multiple instances from running concurrently to avoid conflicts. However, if you you require multiple instances for any reason, you can use the `INSTANCE_ID` setting.
+
+When `INSTANCE_ID` is set, only instances with the **same** ID will block each other, allowing instances with different IDs to run simultaneously.
+
+> [!WARNING]  
+> When using multiple instances, ensure your schedules don't overlap if they share storage paths. For example, if both instances access `/mnt/ssd` (one as source, one as destination), schedule them at different times to avoid moving files that are still being written.
+
+> [!NOTE]  
+> If `INSTANCE_ID` is not set, the original behavior is maintained which will block all any additional instances from running.
 
 ## Changelog
 See the full changelog [here](./CHANGELOG.md).

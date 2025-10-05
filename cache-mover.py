@@ -42,9 +42,13 @@ def main():
 
     logger = setup_logging(config, args.console_log)
 
-    is_running, running_instances = is_script_running()
+    instance_id = config['Settings'].get('INSTANCE_ID')
+    is_running, running_instances = is_script_running(instance_id)
     if is_running:
-        logger.error("Another instance is already running:")
+        if instance_id:
+            logger.error(f"Another instance with ID '{instance_id}' is already running:")
+        else:
+            logger.error("Another instance is already running:")
         for instance in running_instances:
             logger.error(f"  {instance}")
         sys.exit(1)

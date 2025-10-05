@@ -25,7 +25,8 @@ DEFAULT_CONFIG = {
         'NOTIFICATIONS_ENABLED': False,
         'NOTIFICATION_URLS': [],
         'NOTIFY_THRESHOLD': False,
-        'LOG_LEVEL': 'INFO'
+        'INSTANCE_ID': None,
+        'LOG_LEVEL': 'INFO',
     }
 }
 
@@ -79,6 +80,7 @@ def load_config(config_path=None):
         'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', lambda x: x.lower() == 'true'),
         'NOTIFICATION_URLS': ('Settings', 'NOTIFICATION_URLS', lambda x: x.split(',')),
         'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x is not None else False),
+        'INSTANCE_ID': ('Settings', 'INSTANCE_ID', str),
         'LOG_LEVEL': ('Settings', 'LOG_LEVEL', str),
     }
 
