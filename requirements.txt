@@ -1,4 +1,4 @@
 PyYAML==6.0.3
-psutil==7.1.1
+psutil==7.1.2
 requests==2.32.5
 apprise==1.9.5
