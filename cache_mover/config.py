@@ -27,6 +27,8 @@ DEFAULT_CONFIG = {
         'NOTIFY_THRESHOLD': False,
         'INSTANCE_ID': None,
         'LOG_LEVEL': 'INFO',
+        'USE_TEMP_FILES': False,
+        'CLEANUP_TEMP_FILES_ON_START': True,
     }
 }
 
@@ -82,6 +84,8 @@ def load_config(config_path=None):
         'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x is not None else False),
         'INSTANCE_ID': ('Settings', 'INSTANCE_ID', str),
         'LOG_LEVEL': ('Settings', 'LOG_LEVEL', str),
+        'USE_TEMP_FILES': ('Settings', 'USE_TEMP_FILES', lambda x: str(x).lower() == 'true' if x is not None else False),
+        'CLEANUP_TEMP_FILES_ON_START': ('Settings', 'CLEANUP_TEMP_FILES_ON_START', lambda x: str(x).lower() == 'true' if x is not None else True),
     }
 
     for env_var, (section, key, *convert) in env_mappings.items():

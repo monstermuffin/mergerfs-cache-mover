@@ -41,6 +41,8 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
+- `USE_TEMP_FILES`: Use temporary filenames during moves for atomic operations (default false)
+- `CLEANUP_TEMP_FILES_ON_START`: Automatically cleanup orphaned temp files from failed runs on startup (default true, only runs when USE_TEMP_FILES is enabled)
 - `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
 
 > [!WARNING]  
@@ -72,6 +74,8 @@ services:
       NOTIFICATIONS_ENABLED: True
       NOTIFY_THRESHOLD: True
       NOTIFICATION_URLS: "discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+      USE_TEMP_FILES: False
+      CLEANUP_TEMP_FILES_ON_START: True
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
@@ -103,6 +107,8 @@ All configuration options can be set via environment variables:
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
+- `USE_TEMP_FILES`: Use temporary filenames during moves for atomic operations (default false)
+- `CLEANUP_TEMP_FILES_ON_START`: Automatically cleanup orphaned temp files from failed runs on startup (default true, only runs when USE_TEMP_FILES is enabled)
 - `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
 
 ### Using Config File
@@ -422,6 +428,20 @@ When `INSTANCE_ID` is set, only instances with the **same** ID will block each o
 
 > [!NOTE]  
 > If `INSTANCE_ID` is not set, the original behavior is maintained which will block all any additional instances from running.
+
+### Atomic Moves with Temporary Files
+As of v1.4, the script supports atomic file moves using temporary filenames during the transfer process, similar to how rsync operates. This solves a race condition when using mergerfs with `func.getattr=newest`, where accessing files during a move can become unpredictable as both the source and incomplete destination file exist with the same name.
+
+When enabled, files are copied to a temporary name (`.filename.ext.abc123`), verified, then atomically renamed to the final filename. This ensures applications always see either the complete old file or complete new file, never a partial transfer. Orphaned temp files from failed runs are automatically cleaned up on startup.
+
+**Configuration:**
+```yaml
+Settings:
+  USE_TEMP_FILES: true  # Enable atomic moves (default: false)
+  CLEANUP_TEMP_FILES_ON_START: true  # Auto-cleanup orphaned temps (default: true)
+```
+
+For details, see [Issue #43](https://github.com/monstermuffin/mergerfs-cache-mover/issues/43).
 
 ## Changelog
 See the full changelog [here](./CHANGELOG.md).

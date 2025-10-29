@@ -11,6 +11,7 @@ from cache_mover.filesystem import is_script_running
 from cache_mover.updater import auto_update
 from cache_mover.notifications import NotificationManager
 from cache_mover.cleanup import CleanupManager
+from cache_mover.temp_file_cleanup import cleanup_orphaned_temp_files
 from cache_mover import __version__
 
 def display_art():
@@ -59,6 +60,9 @@ def main():
     if config['Settings'].get('AUTO_UPDATE', False):
         if not auto_update(config):
             logger.warning("Auto-update failed or was skipped")
+
+    if config['Settings'].get('USE_TEMP_FILES', False) and config['Settings'].get('CLEANUP_TEMP_FILES_ON_START', True):
+        cleanup_orphaned_temp_files(config['Paths']['BACKING_PATH'], dry_run=args.dry_run)
 
     try:
         current_usage, needs_cleanup = cleanup_mgr.check_usage()
