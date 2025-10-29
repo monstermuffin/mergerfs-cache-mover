@@ -1,12 +1,15 @@
+### v1.3.6 - 2025-10-29
+- Merge in multiple instance support from dev. [Issue #37](https://github.com/monstermuffin/mergerfs-cache-mover/issues/37)
+
 ### v1.3.5 - 2025-06-20
-- Fixed issue where empty cache mode would not send notifications if NOTIFY_THRESHOLD was enabled. (Issue #30)
+- Fixed issue where empty cache mode would not send notifications if NOTIFY_THRESHOLD was enabled. [Issue #30](https://github.com/monstermuffin/mergerfs-cache-mover/issues/30)
 - Updated docs.
 - Fixed Dockerfile to use CMD instead of ENTRYPOINT.
 - CI: Improved build.
 - Misc package bumps.
 
 ### v1.3.4 - 2025-06-12
-- Added custom config file location support. (Issue #28)
+- Added custom config file location support. [Issue #28](https://github.com/monstermuffin/mergerfs-cache-mover/issues/28)
 - Misc package bumps.
 
 ### v1.3.3 - 2025-05-12
