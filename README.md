@@ -4,8 +4,13 @@ Python script / Docker container for moving files. Used primarily for moves from
 
 This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/)
 
+> [!NOTE]  
+> As of v1.4, the script uses atomic file operations by default. Please see below for more details.
+
 ## How It Works
 The script operates by checking the disk usage of the defined 'cache' directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are cleaned after this operation.
+
+Files are moved using atomic operations by default (as of v1.4): each file is copied to a temporary name (`.filename.ext.abc123`), then atomically renamed to its final destination. This prevents race conditions and ensures applications never see partial files during transfers.
 
 The script uses a configuration file or environment variables in Docker to manage settings such as paths, thresholds, and system parameters. 
 
@@ -41,8 +46,6 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
-- `USE_TEMP_FILES`: Use temporary filenames during moves for atomic operations (default false)
-- `CLEANUP_TEMP_FILES_ON_START`: Automatically cleanup orphaned temp files from failed runs on startup (default true, only runs when USE_TEMP_FILES is enabled)
 - `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
 
 > [!WARNING]  
@@ -74,8 +77,6 @@ services:
       NOTIFICATIONS_ENABLED: True
       NOTIFY_THRESHOLD: True
       NOTIFICATION_URLS: "discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
-      USE_TEMP_FILES: False
-      CLEANUP_TEMP_FILES_ON_START: True
     volumes:
       - /mnt/cache-disks:/mnt/cache-disks:rw
       - /mnt/media-cold:/mnt/media-cold:rw
@@ -107,8 +108,6 @@ All configuration options can be set via environment variables:
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
-- `USE_TEMP_FILES`: Use temporary filenames during moves for atomic operations (default false)
-- `CLEANUP_TEMP_FILES_ON_START`: Automatically cleanup orphaned temp files from failed runs on startup (default true, only runs when USE_TEMP_FILES is enabled)
 - `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
 
 ### Using Config File
@@ -356,6 +355,30 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 ```
 
 ## Special Features
+### Atomic File Moves
+As of v1.4, the script uses atomic file operations by default to prevent race conditions and ensure data integrity during moves.
+
+**How it works:**
+- Files are copied to temporary names (`.filename.ext.abc123`) before being atomically renamed to their final destination.
+- Applications never see partial or incomplete files during the transfer process.
+- If the script crashes or is interrupted, orphaned temporary files are automatically cleaned up on the next run.
+
+**Can I disable this?**
+Yes, for now. If you encounter issues, you can disable atomic moves by adding to your config:
+
+```yaml
+Settings:
+  USE_TEMP_FILES: false
+```
+
+Or via environment variable:
+```bash
+USE_TEMP_FILES=false
+```
+
+> [!WARNING]  
+> The option to disable atomic moves is provided temporarily as an option while this feature is new. This option **may be removed in a future version** once the feature has been thoroughly tested. It is strongly recommended to keep atomic moves enabled unless you have a specific reason to disable them. If you have problems, please raise an issue.
+
 ### Hardlink Support
 
 As of v1.3, the script supports preserving hardlinks when moving files between different filesystems. When files with the same inode (hardlinked files) are detected, they are:

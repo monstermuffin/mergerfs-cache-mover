@@ -23,7 +23,4 @@ Settings:
   EXCLUDED_DIRS: #Dirs to exclude.
     - snapraid
 
-  USE_TEMP_FILES: false  #Use temporary filenames during moves for atomic operations (recommended for mergerfs with func.getattr=newest)
-  CLEANUP_TEMP_FILES_ON_START: true  #Automatically cleanup orphaned temp files from possible failed runs on startup (only runs when USE_TEMP_FILES is enabled)
-
   # INSTANCE_ID: tier01  #For running multiple instances, read README.md for more info, leave blank if unsure.
