@@ -5,7 +5,7 @@ Python script / Docker container for moving files. Used primarily for moves from
 This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/)
 
 > [!NOTE]  
-> As of v1.4, the script uses atomic file operations by default. Please see below for more details.
+> As of v1.4 the script uses atomic file operations by default. Please see below for more details.
 
 ## How It Works
 The script operates by checking the disk usage of the defined 'cache' directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are cleaned after this operation.
