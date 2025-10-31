@@ -2,7 +2,7 @@ import os
 import re
 import logging
 
-from .filesystem import _format_bytes, is_excluded
+from .filesystem import _format_bytes
 
 TEMP_FILE_PATTERN = re.compile(r'^\..+\.[a-zA-Z0-9]{6}$')
 
@@ -14,9 +14,15 @@ def cleanup_orphaned_temp_files(backing_path, excluded_dirs, dry_run=False):
     cleaned_size = 0
     
     logging.info("Scanning for orphaned temp files from previous runs")
+    logging.debug(f"Excluded directories: {excluded_dirs}")
     
     for root, dirs, files in os.walk(backing_path):
-        dirs[:] = [d for d in dirs if not is_excluded(os.path.join(root, d), excluded_dirs)] # LLM suggested fix
+        original_dirs = dirs.copy()
+        # Filter out excluded dirs
+        dirs[:] = [d for d in dirs if d not in excluded_dirs]
+        if len(dirs) != len(original_dirs):
+            filtered = set(original_dirs) - set(dirs)
+            logging.debug(f"Filtered out directories at {root}: {filtered}")
         
         for filename in files:
             if is_temp_file(filename):
