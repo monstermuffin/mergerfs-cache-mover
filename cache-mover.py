@@ -62,7 +62,11 @@ def main():
             logger.warning("Auto-update failed or was skipped")
 
     if config['Settings'].get('USE_TEMP_FILES', False) and config['Settings'].get('CLEANUP_TEMP_FILES_ON_START', True):
-        cleanup_orphaned_temp_files(config['Paths']['BACKING_PATH'], dry_run=args.dry_run)
+        cleanup_orphaned_temp_files(
+            config['Paths']['BACKING_PATH'],
+            config['Settings']['EXCLUDED_DIRS'],
+            dry_run=args.dry_run
+        )
 
     try:
         current_usage, needs_cleanup = cleanup_mgr.check_usage()
