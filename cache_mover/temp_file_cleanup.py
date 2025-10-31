@@ -15,10 +15,9 @@ def cleanup_orphaned_temp_files(backing_path, excluded_dirs, dry_run=False):
     
     logging.info("Scanning for orphaned temp files from previous runs")
     
-    for root, _, files in os.walk(backing_path):
-        if is_excluded(root, excluded_dirs):
-            continue
-            
+    for root, dirs, files in os.walk(backing_path):
+        dirs[:] = [d for d in dirs if not is_excluded(os.path.join(root, d), excluded_dirs)] # LLM suggested fix
+        
         for filename in files:
             if is_temp_file(filename):
                 filepath = os.path.join(root, filename)
