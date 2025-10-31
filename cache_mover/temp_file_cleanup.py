@@ -2,20 +2,23 @@ import os
 import re
 import logging
 
-from .filesystem import _format_bytes
+from .filesystem import _format_bytes, is_excluded
 
 TEMP_FILE_PATTERN = re.compile(r'^\..+\.[a-zA-Z0-9]{6}$')
 
 def is_temp_file(filename):
     return TEMP_FILE_PATTERN.match(filename) is not None
 
-def cleanup_orphaned_temp_files(backing_path, dry_run=False):
+def cleanup_orphaned_temp_files(backing_path, excluded_dirs, dry_run=False):
     cleaned_count = 0
     cleaned_size = 0
     
     logging.info("Scanning for orphaned temp files from previous runs")
     
     for root, _, files in os.walk(backing_path):
+        if is_excluded(root, excluded_dirs):
+            continue
+            
         for filename in files:
             if is_temp_file(filename):
                 filepath = os.path.join(root, filename)

@@ -5,7 +5,9 @@ import logging
 HARDCODED_EXCLUSIONS = [
     'snapraid',
     '.snapraid',
-    '.content'
+    '.content',
+    '.snapshots',
+    '.snapshot'
 ]
 
 DEFAULT_CONFIG = {
