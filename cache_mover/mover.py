@@ -63,7 +63,6 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
     cache_path = config['Paths']['CACHE_PATH']
     backing_path = config['Paths']['BACKING_PATH']
     target_percentage = config['Settings']['TARGET_PERCENTAGE']
-    use_temp_files = config['Settings'].get('USE_TEMP_FILES', True)
     
     rel_path = os.path.relpath(src, cache_path)
     dest = os.path.join(dest_base, rel_path)
@@ -89,86 +88,53 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
             return False, 0, 0
 
         if not dry_run:
-            if use_temp_files:
-                temp_dest = generate_temp_filename(dest)
-                logging.debug(f"Using temp file: {temp_dest}")
+            temp_dest = generate_temp_filename(dest)
+            logging.debug(f"Using temp file: {temp_dest}")
+            
+            try:
+                shutil.copy2(src, temp_dest)
+                
+                temp_stat_after_copy = os.stat(temp_dest)
+                logging.debug(f"Temp file {temp_dest} permissions after copy2: mode={oct(stat.S_IMODE(temp_stat_after_copy.st_mode))}, uid={temp_stat_after_copy.st_uid}, gid={temp_stat_after_copy.st_gid}")
                 
                 try:
-                    shutil.copy2(src, temp_dest)
+                    os.chown(temp_dest, src_stat.st_uid, src_stat.st_gid)
+                    os.chmod(temp_dest, stat.S_IMODE(src_stat.st_mode))
                     
-                    temp_stat_after_copy = os.stat(temp_dest)
-                    logging.debug(f"Temp file {temp_dest} permissions after copy2: mode={oct(stat.S_IMODE(temp_stat_after_copy.st_mode))}, uid={temp_stat_after_copy.st_uid}, gid={temp_stat_after_copy.st_gid}")
-                    
-                    try:
-                        os.chown(temp_dest, src_stat.st_uid, src_stat.st_gid)
-                        os.chmod(temp_dest, stat.S_IMODE(src_stat.st_mode))
-                        
-                        temp_stat_final = os.stat(temp_dest)
-                        logging.debug(f"Temp file {temp_dest} final permissions: mode={oct(stat.S_IMODE(temp_stat_final.st_mode))}, uid={temp_stat_final.st_uid}, gid={temp_stat_final.st_gid}")
-                    except OSError as e:
-                        logging.warning(f"Failed to set ownership/permissions for {temp_dest}: {e}")
-                    
-                    if os.path.getsize(temp_dest) != file_size:
-                        logging.error(f"Size mismatch after copying {src}")
-                        try:
-                            os.remove(temp_dest)
-                        except OSError:
-                            pass
-                        return False, 0, 0
-                    
-                    os.rename(temp_dest, dest)
-                    logging.debug(f"Renamed temp file to final destination: {dest}")
-                    
-                    try:
-                        os.remove(src)
-                    except OSError as e:
-                        logging.error(f"Failed to remove source file {src}: {e}")
-                        try:
-                            os.remove(dest)
-                        except OSError:
-                            pass
-                        return False, 0, 0
-                        
+                    temp_stat_final = os.stat(temp_dest)
+                    logging.debug(f"Temp file {temp_dest} final permissions: mode={oct(stat.S_IMODE(temp_stat_final.st_mode))}, uid={temp_stat_final.st_uid}, gid={temp_stat_final.st_gid}")
                 except OSError as e:
-                    logging.error(f"Error during temp file operation for {src}: {e}")
+                    logging.warning(f"Failed to set ownership/permissions for {temp_dest}: {e}")
+                
+                if os.path.getsize(temp_dest) != file_size:
+                    logging.error(f"Size mismatch after copying {src}")
                     try:
-                        if os.path.exists(temp_dest):
-                            os.remove(temp_dest)
+                        os.remove(temp_dest)
                     except OSError:
                         pass
                     return False, 0, 0
-            else:
-                shutil.copy2(src, dest)
                 
-                dest_stat_after_copy = os.stat(dest)
-                logging.debug(f"Destination file {dest} permissions after copy2: mode={oct(stat.S_IMODE(dest_stat_after_copy.st_mode))}, uid={dest_stat_after_copy.st_uid}, gid={dest_stat_after_copy.st_gid}")
+                os.rename(temp_dest, dest)
+                logging.debug(f"Renamed temp file to final destination: {dest}")
                 
                 try:
-                    os.chown(dest, src_stat.st_uid, src_stat.st_gid)
-                    os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
-                    
-                    dest_stat_final = os.stat(dest)
-                    logging.debug(f"Destination file {dest} final permissions: mode={oct(stat.S_IMODE(dest_stat_final.st_mode))}, uid={dest_stat_final.st_uid}, gid={dest_stat_final.st_gid}")
+                    os.remove(src)
                 except OSError as e:
-                    logging.warning(f"Failed to set ownership/permissions for {dest}: {e}")
-                
-                if os.path.getsize(dest) == file_size:
-                    try:
-                        os.remove(src)
-                    except OSError as e:
-                        logging.error(f"Failed to remove source file {src}: {e}")
-                        try:
-                            os.remove(dest)
-                        except OSError:
-                            pass
-                        return False, 0, 0
-                else:
-                    logging.error(f"Size mismatch after copying {src}")
+                    logging.error(f"Failed to remove source file {src}: {e}")
                     try:
                         os.remove(dest)
                     except OSError:
                         pass
                     return False, 0, 0
+                    
+            except OSError as e:
+                logging.error(f"Error during temp file operation for {src}: {e}")
+                try:
+                    if os.path.exists(temp_dest):
+                        os.remove(temp_dest)
+                except OSError:
+                    pass
+                return False, 0, 0
 
         end_time = time()
         time_taken = end_time - start_time
@@ -199,7 +165,6 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
     cache_path = config['Paths']['CACHE_PATH']
     backing_path = config['Paths']['BACKING_PATH']
     target_percentage = config['Settings']['TARGET_PERCENTAGE']
-    use_temp_files = config['Settings'].get('USE_TEMP_FILES', True)
     
     try:
         src_first = hardlink_group[0]
@@ -229,34 +194,26 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
 
             if not dry_run:
                 if src == hardlink_group[0]:
-                    if use_temp_files:
-                        first_temp_dest = generate_temp_filename(dest)
-                        logging.debug(f"Using temp file for hardlink group: {first_temp_dest}")
-                        
-                        shutil.copy2(src, first_temp_dest)
+                    first_temp_dest = generate_temp_filename(dest)
+                    logging.debug(f"Using temp file for hardlink group: {first_temp_dest}")
+                    
+                    shutil.copy2(src, first_temp_dest)
+                    try:
+                        os.chown(first_temp_dest, src_stat.st_uid, src_stat.st_gid)
+                        os.chmod(first_temp_dest, stat.S_IMODE(src_stat.st_mode))
+                    except OSError as e:
+                        logging.info(f"Failed to set ownership/permissions for {first_temp_dest}: {e}")
+                    
+                    if os.path.getsize(first_temp_dest) != file_size:
+                        logging.error(f"Size mismatch after copying hardlinked files")
                         try:
-                            os.chown(first_temp_dest, src_stat.st_uid, src_stat.st_gid)
-                            os.chmod(first_temp_dest, stat.S_IMODE(src_stat.st_mode))
-                        except OSError as e:
-                            logging.info(f"Failed to set ownership/permissions for {first_temp_dest}: {e}")
-                        
-                        if os.path.getsize(first_temp_dest) != file_size:
-                            logging.error(f"Size mismatch after copying hardlinked files")
-                            try:
-                                os.remove(first_temp_dest)
-                            except OSError:
-                                pass
-                            return False, 0, 0
-                        
-                        os.rename(first_temp_dest, dest)
-                        logging.debug(f"Renamed temp file to final destination: {dest}")
-                    else:
-                        shutil.copy2(src, dest)
-                        try:
-                            os.chown(dest, src_stat.st_uid, src_stat.st_gid)
-                            os.chmod(dest, stat.S_IMODE(src_stat.st_mode))
-                        except OSError as e:
-                            logging.info(f"Failed to set ownership/permissions for {dest}: {e}")
+                            os.remove(first_temp_dest)
+                        except OSError:
+                            pass
+                        return False, 0, 0
+                    
+                    os.rename(first_temp_dest, dest)
+                    logging.debug(f"Renamed temp file to final destination: {dest}")
                 else:
                     try:
                         if not create_hardlink_safe(first_dest_final, dest, backing_path):

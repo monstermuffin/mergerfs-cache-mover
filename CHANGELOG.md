@@ -1,11 +1,6 @@
-### v1.4 - 2025-10-30
-- Added atomic file moves with temporary filenames:
-  - Files are copied to temporary names (`.filename.ext.abc123`) before being atomically renamed.
-  - Prevents race conditions during file moves, especially when using mergerfs with `func.getattr=newest` policy.
-  - Added automatic cleanup of orphaned temp files from failed runs on startup.
-  - Temporary filenames use rsync-style pattern with cryptographically secure random suffix.
-  - Default behavior is now atomic moves for improved data integrity (can be disabled if needed, however, this may be temporary until the feature has been thoroughly tested).
-  - [Issue #43](https://github.com/monstermuffin/mergerfs-cache-mover/issues/43)
+### v1.4 - 2025-12-05
+- Atomic file moves are now used by default
+  - [This is related to Issue #43](https://github.com/monstermuffin/mergerfs-cache-mover/issues/43)
 
 ### v1.3.6 - 2025-10-29
 - Merge in multiple instance support from dev. [Issue #37](https://github.com/monstermuffin/mergerfs-cache-mover/issues/37)
