@@ -441,6 +441,11 @@ Atomic file moves uses temporary filenames during the transfer process, similar 
 
 Files are copied to a temporary name (`.filename.ext.abc123`), verified, then atomically renamed to the final filename. This ensures applications always see either the complete old file or complete new file, never a partial transfer. Orphaned temp files from failed runs are automatically cleaned up on startup.
 
+**Crash Recovery:**
+Intelligent cleanup runs on startup to handle interrupted moves:
+- If final destination exists: Removes deleted markers (move completed)
+- If final destination missing: Restores source files from deleted markers (move interrupted)
+- Orphaned temp files without markers are safely removed
 
 ## Changelog
 See the full changelog [here](./CHANGELOG.md).
