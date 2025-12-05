@@ -6,5 +6,6 @@ notifications_old.py
 .vscode/
 test_*.py
 *.md
+*au*
 !README.md
 *eri*.py
