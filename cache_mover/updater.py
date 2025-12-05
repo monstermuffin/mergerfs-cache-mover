@@ -10,6 +10,8 @@ def get_script_dir():
 def set_git_dir():
     script_dir = get_script_dir()
     os.environ['GIT_DIR'] = os.path.join(script_dir, '.git')
+    # Ensure git operates on the real working tree
+    os.environ['GIT_WORK_TREE'] = script_dir
 
 def is_git_repository():
     script_dir = get_script_dir()
