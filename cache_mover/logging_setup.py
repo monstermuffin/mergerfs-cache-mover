@@ -7,12 +7,13 @@ class HybridFormatter(logging.Formatter):
 
     def format(self, record):
         if hasattr(record, 'file_move'):
+            message = record.getMessage()
             return (f"{self.formatTime(record)} - {record.levelname} - File Move Operation:\n"
                     f"  From: {record.src}\n"
                     f"  To: {record.dest}\n"
-                    f"  {record.msg}")
+                    f"  {message}")
         else:
-            return f"{self.formatTime(record)} - {record.levelname} - {record.msg}"
+            return f"{self.formatTime(record)} - {record.levelname} - {record.getMessage()}"
 
 def setup_logging(config, console_log):
     log_formatter = HybridFormatter()
