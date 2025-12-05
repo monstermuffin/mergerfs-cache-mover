@@ -89,6 +89,7 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
 
         if not dry_run:
             temp_dest = generate_temp_filename(dest)
+            src_deleted = None
             logging.debug(f"Using temp file: {temp_dest}")
             
             try:
@@ -114,26 +115,38 @@ def move_file(src, dest_base, config, target_reached_lock, dry_run=False, stop_e
                         pass
                     return False, 0, 0
                 
-                os.rename(temp_dest, dest)
-                logging.debug(f"Renamed temp file to final destination: {dest}")
+                # Mark source as deleted before final rename to prevent duplicates on crash
+                src_deleted = src + ".deleted." + secrets.token_hex(3)
+                os.rename(src, src_deleted)
+                logging.debug(f"Marked source for deletion: {src_deleted}")
                 
                 try:
-                    os.remove(src)
+                    os.rename(temp_dest, dest)
+                    logging.debug(f"Atomically moved to final destination: {dest}")
                 except OSError as e:
-                    logging.error(f"Failed to remove source file {src}: {e}")
-                    try:
-                        os.remove(dest)
-                    except OSError:
-                        pass
+                    logging.error(f"Failed to rename temp to dest: {e}")
+                    os.rename(src_deleted, src)
+                    os.remove(temp_dest)
                     return False, 0, 0
+                
+                try:
+                    os.remove(src_deleted)
+                    logging.debug(f"Removed deleted marker: {src_deleted}")
+                except OSError as e:
+                    logging.debug(f"Could not remove deleted marker (will be cleaned up later): {e}")
                     
             except OSError as e:
-                logging.error(f"Error during temp file operation for {src}: {e}")
+                logging.error(f"Error during atomic file operation for {src}: {e}")
                 try:
                     if os.path.exists(temp_dest):
                         os.remove(temp_dest)
                 except OSError:
                     pass
+                if src_deleted and os.path.exists(src_deleted):
+                    try:
+                        os.rename(src_deleted, src)
+                    except OSError:
+                        pass
                 return False, 0, 0
 
         end_time = time()
@@ -183,6 +196,7 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
         src_stat = os.stat(src_first)
         first_dest_final = os.path.join(dest_base, os.path.relpath(hardlink_group[0], cache_path))
         first_temp_dest = None
+        src_deleted_marker = None
 
         for src in hardlink_group:
             rel_path = os.path.relpath(src, cache_path)
@@ -212,8 +226,19 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
                             pass
                         return False, 0, 0
                     
-                    os.rename(first_temp_dest, dest)
-                    logging.debug(f"Renamed temp file to final destination: {dest}")
+                    # Mark first source as deleted before final rename to prevent duplicates
+                    src_deleted_marker = src + ".deleted." + secrets.token_hex(3)
+                    os.rename(src, src_deleted_marker)
+                    logging.debug(f"Marked first hardlink source for deletion: {src_deleted_marker}")
+                    
+                    try:
+                        os.rename(first_temp_dest, dest)
+                        logging.debug(f"Atomically moved hardlink to final destination: {dest}")
+                    except OSError as e:
+                        logging.error(f"Failed to rename temp to dest for hardlink: {e}")
+                        os.rename(src_deleted_marker, src)
+                        os.remove(first_temp_dest)
+                        return False, 0, 0
                 else:
                     try:
                         if not create_hardlink_safe(first_dest_final, dest, backing_path):
@@ -225,22 +250,48 @@ def move_hardlinked_files(hardlink_group, dest_base, config, target_reached_lock
 
         if not dry_run:
             if os.path.getsize(first_dest_final) == file_size:
-                for src in hardlink_group:
+                deleted_markers = []
+                if src_deleted_marker:
+                    deleted_markers.append(src_deleted_marker)
+                
+                for i, src in enumerate(hardlink_group[1:], 1):
                     try:
-                        os.remove(src)
+                        src_del = src + ".deleted." + secrets.token_hex(3)
+                        os.rename(src, src_del)
+                        deleted_markers.append(src_del)
+                        logging.debug(f"Marked hardlink source {i+1} for deletion: {src_del}")
                     except OSError as e:
-                        logging.error(f"Failed to remove source file {src}: {e}")
+                        logging.error(f"Failed to mark source file {src} for deletion: {e}")
+                        for marker in deleted_markers:
+                            try:
+                                original = marker.rsplit('.deleted.', 1)[0]
+                                os.rename(marker, original)
+                            except OSError:
+                                pass
                         for dest_file in [os.path.join(dest_base, os.path.relpath(f, cache_path)) for f in hardlink_group]:
                             try:
                                 os.remove(dest_file)
                             except OSError:
                                 pass
                         return False, 0, 0
+                
+                for marker in deleted_markers:
+                    try:
+                        os.remove(marker)
+                        logging.debug(f"Removed deleted marker: {marker}")
+                    except OSError as e:
+                        logging.debug(f"Could not remove deleted marker (will be cleaned up later): {e}")
             else:
                 logging.error(f"Size mismatch after copying hardlinked files")
                 for dest_file in [os.path.join(dest_base, os.path.relpath(f, cache_path)) for f in hardlink_group]:
                     try:
                         os.remove(dest_file)
+                    except OSError:
+                        pass
+                if src_deleted_marker and os.path.exists(src_deleted_marker):
+                    try:
+                        original = src_deleted_marker.rsplit('.deleted.', 1)[0]
+                        os.rename(src_deleted_marker, original)
                     except OSError:
                         pass
                 return False, 0, 0
