@@ -5,7 +5,7 @@ Python script / Docker container for moving files. Used primarily for moves from
 This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/)
 
 > [!NOTE]  
-> As of v1.4, atomic file operations are implemented by default. Please [see below](#atomic-moves-implementation-details) for more details.
+> As of v1.4, atomic file operations are implemented by default. Please [see below](#atomic-file-moves) for more details.
 
 ## How It Works
 The script operates by checking the disk usage of the defined 'cache' directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are cleaned after this operation.
@@ -436,13 +436,15 @@ When `INSTANCE_ID` is set, only instances with the **same** ID will block each o
 > [!NOTE]  
 > If `INSTANCE_ID` is not set, the original behavior is maintained which will block all any additional instances from running.
 
-### Atomic Moves Implementation Details
+### Atomic File Moves
 Atomic file moves uses temporary filenames during the transfer process, similar to how rsync operates. This solves a race condition when using mergerfs with `func.getattr=newest`, where accessing files during a move can become unpredictable as both the source and incomplete destination file exist with the same name.
+
+Generally, this is how the project should have been implemented from the start and as such, is now the default behaviour.
 
 Files are copied to a temporary name (`.filename.ext.abc123`), verified, then atomically renamed to the final filename. This ensures applications always see either the complete old file or complete new file, never a partial transfer. Orphaned temp files from failed runs are automatically cleaned up on startup.
 
-**Crash Recovery:**
-Intelligent cleanup runs on startup to handle interrupted moves:
+#### Crash Recovery
+'Intelligent' cleanup runs on startup to handle interrupted moves:
 - If final destination exists: Removes deleted markers (move completed)
 - If final destination missing: Restores source files from deleted markers (move interrupted)
 - Orphaned temp files without markers are safely removed
