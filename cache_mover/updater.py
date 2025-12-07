@@ -44,6 +44,8 @@ def run_git_command(command, error_message):
         logging.debug("Running in Docker container, skipping git operations")
         return None
 
+    set_git_dir()
+
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         return result
