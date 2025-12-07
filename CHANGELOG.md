@@ -2,6 +2,7 @@
 - Atomic file moves are now used by default:
   - Intelligent cleanup on startup: restores interrupted moves, removes orphaned files.
   - Related: [Issue #43](https://github.com/monstermuffin/mergerfs-cache-mover/issues/43)
+- Improved updater to ensure git environment is properly set for all operations.
 
 ### v1.3.6 - 2025-10-29
 - Merge in multiple instance support from dev. [Issue #37](https://github.com/monstermuffin/mergerfs-cache-mover/issues/37)
