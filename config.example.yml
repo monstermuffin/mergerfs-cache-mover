@@ -20,7 +20,9 @@ Settings:
     - 'discord://webhook_id/webhook_token'
     - 'slack://hooks/tokenA/tokenB/tokenC'
 
-  EXCLUDED_DIRS: #Dirs to exclude.
+  EXCLUDED_DIRS: #Directories to exclude from cache moving. Supports single dir names or paths. Read README.md for examples.
     - snapraid
+    # - media/downloads
+    # - media/torrents/audiobooks
 
   # INSTANCE_ID: tier01  #For running multiple instances, read README.md for more info, leave blank if unsure.

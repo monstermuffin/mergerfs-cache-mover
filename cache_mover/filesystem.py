@@ -20,8 +20,25 @@ def _format_bytes(bytes: int) -> str:
     return f"{bytes:.2f}PB"
 
 def is_excluded(path, excluded_dirs):
-    path_parts = [part for part in path.split(os.sep) if part]
-    return any(excluded in path_parts for excluded in excluded_dirs)
+    normalized_path = os.path.normpath(path)
+    
+    for excluded in excluded_dirs:
+        excluded_normalized = os.path.normpath(excluded)
+        
+        # subdirectory path pattern (e.g., 'media/downloads')
+        if os.sep in excluded_normalized:
+            path_forward = normalized_path.replace(os.sep, '/')
+            excluded_forward = excluded_normalized.replace(os.sep, '/')
+            
+            if f'/{excluded_forward}/' in f'/{path_forward}/':
+                return True
+        # single directory name (e.g., 'downloads')
+        else:
+            path_parts = [part for part in normalized_path.split(os.sep) if part]
+            if excluded_normalized in path_parts:
+                return True
+    
+    return False
 
 def get_file_inode(path):
     try:
