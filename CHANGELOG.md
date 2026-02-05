@@ -1,3 +1,7 @@
+### v1.4.1 - 2026-02-05
+- Improved excluded directories mechanism. [Issue #51](https://github.com/MonsterMuffin/mergerfs-cache-mover/issues/51)
+- Removed unused version argument.
+
 ### v1.4 - 2025-12-05
 - Atomic file moves are now used by default:
   - Intelligent cleanup on startup: restores interrupted moves, removes orphaned files.
