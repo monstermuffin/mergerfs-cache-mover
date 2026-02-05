@@ -47,6 +47,7 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
 - `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
+- `EXCLUDED_DIRS`: Directories to exclude from cache moving operations (see [Excluded Directories](#excluded-directories) for details)
 
 > [!WARNING]  
 > This script must be run as root (using sudo) for the following reasons:
@@ -73,7 +74,8 @@ services:
       TARGET_PERCENTAGE: 25
       LOG_LEVEL: INFO
       MAX_WORKERS: 8
-      EXCLUDED_DIRS: temp,downloads,cache
+      # Comma-separated list of excluded directories
+      EXCLUDED_DIRS: "snapraid,media/downloads,media/torrents/audiobooks"
       NOTIFICATIONS_ENABLED: True
       NOTIFY_THRESHOLD: True
       NOTIFICATION_URLS: "discord://webhook_id/webhook_token,slack://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
@@ -104,7 +106,7 @@ All configuration options can be set via environment variables:
 - `TARGET_PERCENTAGE`: Target usage percentage (default: 25)
 - `LOG_LEVEL`: Log level (default: INFO, examples: `DEBUG`, `INFO`, `WARNING`, `ERROR`).
 - `MAX_WORKERS`: Maximum parallel file moves (default: 8)
-- `EXCLUDED_DIRS`: Comma-separated list of directories to exclude
+- `EXCLUDED_DIRS`: Comma-separated list of directories to exclude (e.g., `"snapraid,media/downloads,media/torrents/audiobooks"`)
 - `NOTIFICATIONS_ENABLED`: Enables notifications (default false)
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
@@ -355,6 +357,59 @@ Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 ```
 
 ## Special Features
+### Excluded Directories
+The script allows you to exclude specific directories from cache moving operations using the `EXCLUDED_DIRS` setting. This is useful for keeping certain files on the cache tier permanently.
+
+**Two Pattern Types:**
+
+1. **Single Directory Name** (e.g., `downloads`)
+   - Excludes ANY directory with that name, regardless of where it appears in the path hierarchy
+   - Example: `downloads` would exclude both `/cache/downloads/` and `/cache/media/downloads/`
+
+2. **Subdirectory Path** (e.g., `media/downloads`)
+   - Excludes only that specific path from the cache root
+   - Example: `media/downloads` would only exclude `/cache/media/downloads/` but NOT `/cache/downloads/`
+
+**Configuration Examples:**
+
+In `config.yml`:
+```yaml
+Settings:
+  EXCLUDED_DIRS:
+    - snapraid                      # Excludes any 'snapraid' directory
+    - media/downloads               # Excludes only /cache/media/downloads/*
+    - media/torrents/audiobooks     # Excludes only /cache/media/torrents/audiobooks/*
+    - media/library/audiobooks      # Excludes only /cache/media/library/audiobooks/*
+```
+
+In Docker environment variables (comma-separated string):
+```yaml
+environment:
+  EXCLUDED_DIRS: "snapraid,media/downloads,media/torrents/audiobooks"
+```
+
+Or using YAML multi-line string for better readability:
+```yaml
+environment:
+  EXCLUDED_DIRS: >-
+    snapraid,
+    media/downloads,
+    media/torrents/audiobooks,
+    media/library/audiobooks
+```
+
+**Built-in Exclusions:**
+The following directories are always excluded (hardcoded):
+- `snapraid`
+- `.snapraid`
+- `.content`
+- `.snapshots`
+- `.snapshot`
+
+> [!NOTE]
+> User-defined exclusions are combined with the built-in exclusions. You don't need to re-specify the hardcoded ones.
+
+
 ### Atomic File Moves
 As of v1.4, the script uses atomic file operations to prevent race conditions and ensure data integrity during moves.
 
