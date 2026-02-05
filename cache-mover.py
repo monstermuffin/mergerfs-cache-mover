@@ -12,7 +12,6 @@ from cache_mover.updater import auto_update
 from cache_mover.notifications import NotificationManager
 from cache_mover.cleanup import CleanupManager
 from cache_mover.temp_file_cleanup import cleanup_orphaned_temp_files
-from cache_mover import __version__
 
 def display_art():
     art = """
@@ -32,7 +31,6 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='Show what would be moved without moving')
     parser.add_argument('--console-log', action='store_true', help='Log to console in addition to file')
     parser.add_argument('--config', help='Path to config)')
-    parser.add_argument('--version', action='version', version=f'MergerFS Cache Mover v{__version__}')
     args = parser.parse_args()
 
     try:
