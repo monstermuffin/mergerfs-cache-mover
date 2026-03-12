@@ -514,7 +514,9 @@ If you would like to contribute to the project, please raise an issue or PR. If 
 Cheers, if you have any issues please do not hesitate to raise an issue.
 ✌️
 
-## Star History
+### Ko-fi
+[![Tip me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/muffn_)
+
 <a href="https://www.star-history.com/#MonsterMuffin/mergerfs-cache-mover&Date">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=MonsterMuffin/mergerfs-cache-mover&type=Date&theme=dark" />
