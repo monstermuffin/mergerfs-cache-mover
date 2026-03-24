@@ -25,4 +25,6 @@ Settings:
     # - media/downloads
     # - media/torrents/audiobooks
 
+  KEEP_EMPTY_DIRS: false #Set to true to preserve empty directories after moving files.
+
   # INSTANCE_ID: tier01  #For running multiple instances, read README.md for more info, leave blank if unsure.

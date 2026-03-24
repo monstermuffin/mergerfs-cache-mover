@@ -53,13 +53,16 @@ class CleanupManager:
         )
 
         if not self.dry_run and moved_count > 0:
-            removed_dirs = remove_empty_dirs(
-                self.cache_path,
-                self.config['Settings']['EXCLUDED_DIRS'],
-                self.dry_run
-            )
-            if removed_dirs > 0:
-                logging.info(f"Removed {removed_dirs} empty directories")
+            if self.config['Settings'].get('KEEP_EMPTY_DIRS', False):
+                logging.info("KEEP_EMPTY_DIRS enabled, skipping empty directory cleanup")
+            else:
+                removed_dirs = remove_empty_dirs(
+                    self.cache_path,
+                    self.config['Settings']['EXCLUDED_DIRS'],
+                    self.dry_run
+                )
+                if removed_dirs > 0:
+                    logging.info(f"Removed {removed_dirs} empty directories")
 
         final_usage = get_fs_usage(self.cache_path)
         return moved_count, final_usage, total_bytes, elapsed_time, avg_speed
