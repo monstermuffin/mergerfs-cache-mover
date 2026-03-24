@@ -4,9 +4,6 @@ Python script / Docker container for moving files. Used primarily for moves from
 
 This was created as part of [MANS.](https://github.com/monstermuffin/muffins-awesome-nas-stack/)
 
-> [!NOTE]  
-> As of v1.4, atomic file operations are implemented by default. Please [see below](#atomic-file-moves) for more details.
-
 ## How It Works
 The script operates by checking the disk usage of the defined 'cache' directory. If the usage is above the threshold percentage defined in the configuration file (`config.yml`), it will move the oldest files out to the backing storage location until the usage is below a defined target percentage. Empty directories are cleaned after this operation.
 
@@ -21,14 +18,19 @@ At runtime, a check for other instances of itself will prevent multiple concurre
 1. To get started, clone the repository to your local machine using the following command:
 
 ```shell
-git clone https://github.com/MonsterMuffin/mergerfs-cache-mover.git
+git clone https://github.com/MonsterMuffin/mergerfs-cache-mover.git /opt/mergerfs-cache-mover
 ```
 
-2. Install the required Python packages using pip:
+2. Create a virtual environment and install the required Python packages:
 
 ```shell
-pip install -r requirements.txt
+cd /opt/mergerfs-cache-mover
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
 ```
+
+> [!NOTE]
+> A virtual environment is required on modern Linux distributions (Debian 12+, Ubuntu 23.04+) which enforce [PEP 668](https://peps.python.org/pep-0668/) and prevent installing packages directly into the system Python via pip. Using a venv is also generally recommended to avoid dependency conflicts. I have generally ignored this in the past, but this is the correct way to do it.
 
 ## Configuration Setup
 Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the appropriate values:
@@ -282,20 +284,20 @@ For additional notification services and their configuration, refer to the [Appr
 To run the script manually, use the following command from your terminal:
 
 ```shell
-sudo python3 cache-mover.py --console-log
+sudo /opt/mergerfs-cache-mover/venv/bin/python3 /opt/mergerfs-cache-mover/cache-mover.py --console-log
 ```
 
 You can also specify `--dry-run`
 
 ```shell
-sudo python3 cache-mover.py --dry-run --console-log
+sudo /opt/mergerfs-cache-mover/venv/bin/python3 /opt/mergerfs-cache-mover/cache-mover.py --dry-run --console-log
 ```
 
 ### Custom Configuration File Location
 By default, the script looks for `config.yml` in the same directory. You can specify a custom configuration file location using the `--config` option:
 
 ```shell
-sudo python3 cache-mover.py --config /etc/cache-mover/config.yml --console-log
+sudo /opt/mergerfs-cache-mover/venv/bin/python3 /opt/mergerfs-cache-mover/cache-mover.py --config /etc/cache-mover/config.yml --console-log
 ```
 
 ## Automated Execution
@@ -310,11 +312,11 @@ Description="Muffin's Cache Mover Script."
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /opt/mergerfs-cache-mover/cache-mover.py
+ExecStart=/opt/mergerfs-cache-mover/venv/bin/python3 /opt/mergerfs-cache-mover/cache-mover.py
 WorkingDirectory=/opt/mergerfs-cache-mover
 
 [Install]
-WantedBy=multi-user.targe
+WantedBy=multi-user.target
 ```
 
 2. Create a systemd timer file `/etc/systemd/system/cache_mover.timer`. The timer format is not the usual crontab format, [find out more](https://silentlad.com/systemd-timers-oncalendar-(cron)-format-explained) if you need help.
@@ -355,7 +357,7 @@ sudo crontab -e
 Change `/path/to/cache-mover.py` to where you downloaded the script, obviously.
 
 ```cron
-0 3 * * * /usr/bin/python3 /path/to/cache-mover.py
+0 3 * * * /opt/mergerfs-cache-mover/venv/bin/python3 /opt/mergerfs-cache-mover/cache-mover.py
 ```
 
 ## Special Features
@@ -481,6 +483,9 @@ Settings:
 
 ### Auto-Update
 If enabled the script checks for updates at runtime from the GitHub and automatically updates itself if a new version is available. There is an option for checking a specific branch, unless you have a specific reason to, this should stay as `main`.
+
+> [!NOTE]
+> Auto-update only pulls updated Python files, it does not update pip dependencies. If a new version adds new dependencies, re-run `venv/bin/pip install -r requirements.txt` manually after the update, or check the changelog for dependency changes.
 
 ### Multiple Instances
 By default, the script prevents multiple instances from running concurrently to avoid conflicts. However, if you you require multiple instances for any reason, you can use the `INSTANCE_ID` setting.
