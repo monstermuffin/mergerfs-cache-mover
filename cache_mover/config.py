@@ -33,6 +33,13 @@ DEFAULT_CONFIG = {
     }
 }
 
+def _parse_bool(value):
+    return str(value).lower() == 'true'
+
+def _parse_excluded_dirs(value):
+    dirs = [y.strip() for y in value.split(',')] if value else []
+    return list(set(HARDCODED_EXCLUSIONS + dirs))
+
 def get_script_dir():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -78,14 +85,14 @@ def load_config(config_path=None):
         'MAX_LOG_SIZE_MB': ('Settings', 'MAX_LOG_SIZE_MB', int),
         'BACKUP_COUNT': ('Settings', 'BACKUP_COUNT', int),
         'UPDATE_BRANCH': ('Settings', 'UPDATE_BRANCH', str),
-        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', lambda x: list(set(HARDCODED_EXCLUSIONS + ([y.strip() for y in x.split(',')] if x else [])))),
+        'EXCLUDED_DIRS': ('Settings', 'EXCLUDED_DIRS', _parse_excluded_dirs),
         'SCHEDULE': ('Settings', 'SCHEDULE', str),
-        'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', lambda x: x.lower() == 'true'),
+        'NOTIFICATIONS_ENABLED': ('Settings', 'NOTIFICATIONS_ENABLED', _parse_bool),
         'NOTIFICATION_URLS': ('Settings', 'NOTIFICATION_URLS', lambda x: x.split(',')),
-        'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', lambda x: str(x).lower() == 'true' if x is not None else False),
+        'NOTIFY_THRESHOLD': ('Settings', 'NOTIFY_THRESHOLD', _parse_bool),
         'INSTANCE_ID': ('Settings', 'INSTANCE_ID', str),
         'LOG_LEVEL': ('Settings', 'LOG_LEVEL', str),
-        'KEEP_EMPTY_DIRS': ('Settings', 'KEEP_EMPTY_DIRS', lambda x: x.lower() == 'true'),
+        'KEEP_EMPTY_DIRS': ('Settings', 'KEEP_EMPTY_DIRS', _parse_bool),
     }
 
     for env_var, (section, key, *convert) in env_mappings.items():
