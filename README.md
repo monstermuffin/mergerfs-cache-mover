@@ -48,6 +48,7 @@ Copy `config.example.yml` to `config.yml` and set up your `config.yml` with the 
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
 - `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
 - `EXCLUDED_DIRS`: Directories to exclude from cache moving operations (see [Excluded Directories](#excluded-directories) for details)
+- `KEEP_EMPTY_DIRS`: Preserve empty directories after moving files (default false)
 
 > [!WARNING]  
 > This script must be run as root (using sudo) for the following reasons:
@@ -111,6 +112,7 @@ All configuration options can be set via environment variables:
 - `NOTIFICATION_URLS`: Apprise notification URLs
 - `NOTIFY_THRESHOLD`: Notify on no action (default false)
 - `INSTANCE_ID`: Optional unique identifier for running multiple instances (default none)
+- `KEEP_EMPTY_DIRS`: Preserve empty directories after moving files (default false)
 
 ### Using Config File
 You can optionally mount a `config.yml` into the container as so:
