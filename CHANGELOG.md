@@ -1,3 +1,7 @@
+### v1.4.2 - 2026-03-24
+- Added `KEEP_EMPTY_DIRS` option to preserve empty directories after moving files. [Issue #55](https://github.com/monstermuffin/mergerfs-cache-mover/issues/60)
+- Changed README.md to instruct users to use a venv due to PEP 668 enforcement.
+
 ### v1.4.1 - 2026-02-05
 - Improved excluded directories mechanism. [Issue #51](https://github.com/MonsterMuffin/mergerfs-cache-mover/issues/51)
 - Removed unused version argument.
