@@ -46,7 +46,9 @@ def makedirs_preserve_stats(src_dir, dest_dir): # dir tree perm fix attempt v1.3
                 if os.path.exists(src_path):
                     src_stat = os.stat(src_path)
                     os.chown(new_dir, src_stat.st_uid, src_stat.st_gid)
-                    os.chmod(new_dir, src_stat.st_mode)
+                    # copystat carries mode, timestamps and xattrs; on Linux the
+                    # xattr copy is what preserves POSIX access + default ACLs.
+                    shutil.copystat(src_path, new_dir)
                     logging.debug(f"Set permissions on {new_dir} from {src_path}")
                 else:
                     logging.debug(f"Source directory does not exist: {src_path}")
